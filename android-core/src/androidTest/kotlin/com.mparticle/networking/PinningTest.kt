@@ -1,136 +1,139 @@
-package com.mparticle.networking;
+package com.mparticle.networking
 
-import androidx.test.platform.app.InstrumentationRegistry;
-import android.util.MutableBoolean;
+import android.util.MutableBoolean
+import androidx.test.platform.app.InstrumentationRegistry
+import com.mparticle.MParticle
+import com.mparticle.identity.IdentityApiRequest
+import com.mparticle.internal.AccessUtils
+import com.mparticle.testutils.BaseCleanStartedEachTest
+import com.mparticle.testutils.MPLatch
+import junit.framework.Assert.assertEquals
+import junit.framework.Assert.assertTrue
+import org.json.JSONObject
+import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.Test
+import java.util.concurrent.CountDownLatch
 
-import com.mparticle.MParticle;
-import com.mparticle.identity.IdentityApiRequest;
-import com.mparticle.testutils.BaseCleanStartedEachTest;
-
-import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
-import com.mparticle.testutils.MPLatch;
-
-import java.util.concurrent.CountDownLatch;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-public class PinningTest extends BaseCleanStartedEachTest {
-    MutableBoolean called;
-    CountDownLatch latch;
-
-    protected boolean shouldPin() {
-        return true;
+open class PinningTest : BaseCleanStartedEachTest() {
+    lateinit var called: MutableBoolean
+    lateinit var latch: CountDownLatch
+    protected open fun shouldPin(): Boolean {
+        return true
     }
 
-    @BeforeClass
-    public static void beforeClass() {
-        MParticle.reset(InstrumentationRegistry.getInstrumentation().getContext());
-    }
+
 
     @Before
-    public void before() {
-        called = new MutableBoolean(false);
-        latch = new MPLatch(1);
+    fun before() {
+        called = MutableBoolean(false)
+        latch = MPLatch(1)
     }
 
     @Test
-    public void testIdentityClientLogin() throws Exception {
-        new PinningTestHelper(mContext, "/login", new PinningTestHelper.Callback() {
-            @Override
-            public void onPinningApplied(boolean pinned) {
-                assertEquals(shouldPin(), pinned);
-                called.value = true;
-                latch.countDown();
+    @Throws(Exception::class)
+    fun testIdentityClientLogin() {
+        PinningTestHelper(mContext, "/login", object : PinningTestHelper.Callback {
+            override fun onPinningApplied(pinned: Boolean) {
+                assertEquals(shouldPin(), pinned)
+                called.value = true
+                latch.countDown()
             }
-        });
-        MParticle.getInstance().Identity().login(IdentityApiRequest.withEmptyUser().build());
-        latch.await();
-        assertTrue(called.value);
+        })
+        MParticle.getInstance()?.Identity()?.login(IdentityApiRequest.withEmptyUser().build())
+        latch.await()
+        assertTrue(called.value)
     }
 
     @Test
-    public void testIdentityClientLogout() throws Exception {
-        new PinningTestHelper(mContext, "/logout", new PinningTestHelper.Callback() {
-            @Override
-            public void onPinningApplied(boolean pinned) {
-                assertEquals(shouldPin(), pinned);
-                called.value = true;
-                latch.countDown();
+    @Throws(Exception::class)
+    fun testIdentityClientLogout() {
+        PinningTestHelper(mContext, "/logout", object : PinningTestHelper.Callback {
+            override fun onPinningApplied(pinned: Boolean) {
+                assertEquals(shouldPin(), pinned)
+                called.value = true
+                latch.countDown()
             }
-        });
-        MParticle.getInstance().Identity().logout(IdentityApiRequest.withEmptyUser().build());
-        latch.await();
-        assertTrue(called.value);
+        })
+        MParticle.getInstance()?.Identity()?.logout(IdentityApiRequest.withEmptyUser().build())
+        latch.await()
+        assertTrue(called.value)
     }
 
     @Test
-    public void testIdentityClientIdentify() throws Exception {
-        new PinningTestHelper(mContext, "/identify", new PinningTestHelper.Callback() {
-            @Override
-            public void onPinningApplied(boolean pinned) {
-                assertEquals(shouldPin(), pinned);
-                called.value = true;
-                latch.countDown();
+    @Throws(Exception::class)
+    fun testIdentityClientIdentify() {
+        PinningTestHelper(mContext, "/identify", object : PinningTestHelper.Callback {
+            override fun onPinningApplied(pinned: Boolean) {
+                assertEquals(shouldPin(), pinned)
+                called.value = true
+                latch.countDown()
             }
-        });
-        MParticle.getInstance().Identity().identify(IdentityApiRequest.withEmptyUser().build());
-        latch.await();
-        assertTrue(called.value);
+        })
+        MParticle.getInstance()?.Identity()?.identify(IdentityApiRequest.withEmptyUser().build())
+        latch.await()
+        assertTrue(called.value)
     }
 
     @Test
-    public void testIdentityClientModify() throws Exception {
-        new PinningTestHelper(mContext, "/modify", new PinningTestHelper.Callback() {
-            @Override
-            public void onPinningApplied(boolean pinned) {
-                assertEquals(shouldPin(), pinned);
-                called.value = true;
-                latch.countDown();
+    @Throws(Exception::class)
+    fun testIdentityClientModify() {
+        PinningTestHelper(mContext, "/modify", object : PinningTestHelper.Callback {
+            override fun onPinningApplied(pinned: Boolean) {
+                assertEquals(shouldPin(), pinned)
+                called.value = true
+                latch.countDown()
             }
-        });
-        MParticle.getInstance().Identity().modify(IdentityApiRequest.withEmptyUser().customerId(mRandomUtils.getAlphaNumericString(25)).build());
-        latch.await();
-        assertTrue(called.value);
+        })
+        MParticle.getInstance()?.Identity()?.modify(
+            IdentityApiRequest.withEmptyUser().customerId(mRandomUtils.getAlphaNumericString(25))
+                .build()
+        )
+        latch.await()
+        assertTrue(called.value)
     }
 
     @Test
-    public void testMParticleClientFetchConfig() throws Exception {
+    @Throws(Exception::class)
+    fun testMParticleClientFetchConfig() {
         try {
-            new PinningTestHelper(mContext, "/config", new PinningTestHelper.Callback() {
-                @Override
-                public void onPinningApplied(boolean pinned) {
-                    assertEquals(shouldPin(), pinned);
-                    called.value = true;
-                    latch.countDown();
+            PinningTestHelper(mContext, "/config", object : PinningTestHelper.Callback {
+                override fun onPinningApplied(pinned: Boolean) {
+                    assertEquals(shouldPin(), pinned)
+                    called.value = true
+                    latch.countDown()
                 }
-            });
-            com.mparticle.internal.AccessUtils.getApiClient().fetchConfig(true);
-        } catch (Exception e) {
+            })
+            AccessUtils.getApiClient().fetchConfig(true)
+        } catch (_: java.lang.Exception) {
         }
-        latch.await();
-        assertTrue(called.value);
+        latch.await()
+        assertTrue(called.value)
     }
 
     @Test
-    public void testMParticleClientSendMessage() throws Exception {
-        new PinningTestHelper(mContext, "/events", new PinningTestHelper.Callback() {
-            @Override
-            public void onPinningApplied(boolean pinned) {
-                assertEquals(shouldPin(), pinned);
-                called.value = true;
-                latch.countDown();
+    @Throws(Exception::class)
+    fun testMParticleClientSendMessage() {
+        PinningTestHelper(mContext, "/events", object : PinningTestHelper.Callback {
+            override fun onPinningApplied(pinned: Boolean) {
+                assertEquals(shouldPin(), pinned)
+                called.value = true
+                latch.countDown()
             }
-        });
+        })
         try {
-            com.mparticle.internal.AccessUtils.getApiClient().sendMessageBatch(new JSONObject().toString());
+            AccessUtils.getApiClient().sendMessageBatch(JSONObject().toString())
+        } catch (_: java.lang.Exception) {
         }
-        catch (Exception e) {}
-        latch.await();
-        assertTrue(called.value);
+        latch.await()
+        assertTrue(called.value)
     }
+
+    companion object {
+        @BeforeClass
+        fun beforeClass() {
+            MParticle.reset(InstrumentationRegistry.getInstrumentation().context)
+        }
+    }
+    
 }

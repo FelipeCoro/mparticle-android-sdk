@@ -1,81 +1,65 @@
-package com.mparticle;
+package com.mparticle
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import android.content.Context
+import android.location.Location
+import android.os.Handler
+import android.os.Looper
+import android.webkit.WebView
+import com.mparticle.identity.IdentityApiRequest
+import com.mparticle.identity.IdentityStateListener
+import com.mparticle.internal.ConfigManager
+import com.mparticle.internal.KitFrameworkWrapper
+import com.mparticle.internal.MParticleJSInterface
+import com.mparticle.internal.MessageManager
+import com.mparticle.internal.PushRegistrationHelper.PushRegistration
+import com.mparticle.networking.Matcher
+import com.mparticle.networking.MockServer.JSONMatch
+import com.mparticle.testutils.AndroidUtils
+import com.mparticle.testutils.BaseCleanStartedEachTest
+import com.mparticle.testutils.MPLatch
+import com.mparticle.testutils.TestingUtils
+import org.json.JSONException
+import org.json.JSONObject
+import org.junit.Assert
+import org.junit.Test
+import java.io.File
+import java.util.*
+import java.util.concurrent.CountDownLatch
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.location.Location;
-import android.os.Handler;
-import android.os.Looper;
-import android.webkit.WebView;
-
-import com.mparticle.identity.IdentityApiRequest;
-import com.mparticle.identity.IdentityStateListener;
-import com.mparticle.identity.MParticleUser;
-import com.mparticle.internal.ConfigManager;
-import com.mparticle.internal.KitFrameworkWrapper;
-import com.mparticle.internal.MParticleJSInterface;
-import com.mparticle.internal.MessageManager;
-import com.mparticle.internal.PushRegistrationHelper;
-import com.mparticle.networking.Matcher;
-import com.mparticle.networking.MockServer;
-import com.mparticle.networking.Request;
-import com.mparticle.testutils.AndroidUtils;
-import com.mparticle.testutils.BaseCleanStartedEachTest;
-import com.mparticle.testutils.MPLatch;
-import com.mparticle.testutils.TestingUtils;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.junit.Test;
-import org.junit.Assert;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-
-public class MParticleTest extends BaseCleanStartedEachTest {
-    private String configResponse = "{\"dt\":\"ac\", \"id\":\"fddf1f96-560e-41f6-8f9b-ddd070be0765\", \"ct\":1434392412994, \"dbg\":false, \"cue\":\"appdefined\", \"pmk\":[\"mp_message\", \"com.urbanairship.push.ALERT\", \"alert\", \"a\", \"message\"], \"cnp\":\"appdefined\", \"soc\":0, \"oo\":false, \"eks\":[] }, \"pio\":30 }";
+class MParticleTest : BaseCleanStartedEachTest() {
+    private val configResponse =
+        "{\"dt\":\"ac\", \"id\":\"fddf1f96-560e-41f6-8f9b-ddd070be0765\", \"ct\":1434392412994, \"dbg\":false, \"cue\":\"appdefined\", \"pmk\":[\"mp_message\", \"com.urbanairship.push.ALERT\", \"alert\", \"a\", \"message\"], \"cnp\":\"appdefined\", \"soc\":0, \"oo\":false, \"eks\":[] }, \"pio\":30 }"
 
     @Test
-    public void testEnsureSessionActive() {
-        MParticle.getInstance().mAppStateManager.ensureActiveSession();
-        ensureSessionActive();
+    fun testEnsureSessionActive() {
+        MParticle.getInstance()?.mAppStateManager?.ensureActiveSession()
+        ensureSessionActive()
     }
 
     @Test
-    public void testEnsureSessionActiveAtStart() {
-        assertFalse(MParticle.getInstance().isSessionActive());
+    fun testEnsureSessionActiveAtStart() {
+        MParticle.getInstance()?.isSessionActive?.let { Assert.assertFalse(it) }
     }
 
     @Test
-    public void testSessionEndsOnOptOut() {
-        MParticle.getInstance().mAppStateManager.ensureActiveSession();
-        assertTrue(MParticle.getInstance().mAppStateManager.getSession().isActive());
-        MParticle.getInstance().setOptOut(true);
-        assertFalse(MParticle.getInstance().mAppStateManager.getSession().isActive());
+    fun testSessionEndsOnOptOut() {
+        MParticle.getInstance()?.mAppStateManager?.ensureActiveSession()
+        MParticle.getInstance()?.mAppStateManager?.session?.isActive?.let { Assert.assertTrue(it) }
+        MParticle.getInstance()?.optOut = true
+        MParticle.getInstance()?.mAppStateManager?.session?.isActive?.let { Assert.assertFalse(it) }
     }
 
     @Test
-    public void testSetInstallReferrer() {
-        MParticle.getInstance().setInstallReferrer("foo install referrer");
-        Assert.assertEquals("foo install referrer", MParticle.getInstance().getInstallReferrer());
+    fun testSetInstallReferrer() {
+        MParticle.getInstance()?.installReferrer = "foo install referrer"
+        Assert.assertEquals("foo install referrer", MParticle.getInstance()?.installReferrer)
     }
 
     @Test
-    public void testInstallReferrerUpdate() {
-        String randomName = mRandomUtils.getAlphaNumericString(mRandomUtils.randomInt(4, 64));
-        MParticle.getInstance().setInstallReferrer(randomName);
-        assertTrue(MParticle.getInstance().getInstallReferrer().equals(randomName));
+    fun testInstallReferrerUpdate() {
+        val randomName = mRandomUtils.getAlphaNumericString(mRandomUtils.randomInt(4, 64))
+        MParticle.getInstance()?.installReferrer = randomName
+        Assert.assertTrue(MParticle.getInstance()?.installReferrer == randomName)
     }
 
     /**
@@ -85,292 +69,279 @@ public class MParticleTest extends BaseCleanStartedEachTest {
      * @throws Exception
      */
     @Test
-    public void testCalledUpdateInstallReferrer() throws Exception {
-        final boolean[] called = new boolean[2];
-        MParticle.getInstance().mMessageManager = new MessageManager(){
-            @Override
-            public void installReferrerUpdated() {
-                called[0] = true;
+    @Throws(Exception::class)
+    fun testCalledUpdateInstallReferrer() {
+        val called = BooleanArray(2)
+        MParticle.getInstance()?.mMessageManager = object : MessageManager() {
+            override fun installReferrerUpdated() {
+                called[0] = true
             }
-        };
-
-        MParticle.getInstance().mKitManager = new KitFrameworkWrapper(mContext, null,null, null, true, null) {
-            @Override
-            public void installReferrerUpdated() {
-                called[1] = true;
+        }
+        MParticle.getInstance()?.mKitManager =
+            object : KitFrameworkWrapper(mContext, null, null, null, true, null) {
+                override fun installReferrerUpdated() {
+                    called[1] = true
+                }
             }
-        };
 
         //Test when the InstallReferrer is set directly on the InstallReferrerHelper.
-        String installReferrer = mRandomUtils.getAlphaNumericString(10);
-        InstallReferrerHelper.setInstallReferrer(mContext, installReferrer);
-
-        assertTrue(called[0]);
-        assertTrue(called[1]);
-
-        Arrays.fill(called, false);
+        var installReferrer = mRandomUtils.getAlphaNumericString(10)
+        InstallReferrerHelper.setInstallReferrer(mContext, installReferrer)
+        Assert.assertTrue(called[0])
+        Assert.assertTrue(called[1])
+        Arrays.fill(called, false)
 
         //Test when it is set through the MParticle object in the public API.
-        installReferrer = mRandomUtils.getAlphaNumericString(10);
-        MParticle.getInstance().setInstallReferrer(installReferrer);
-
-        assertTrue(called[0]);
-        assertTrue(called[1]);
-
-        Arrays.fill(called, false);
+        installReferrer = mRandomUtils.getAlphaNumericString(10)
+        MParticle.getInstance()?.installReferrer = installReferrer
+        Assert.assertTrue(called[0])
+        Assert.assertTrue(called[1])
+        Arrays.fill(called, false)
 
         //Just a sanity check, if Context is null, it should not set mark the InstallReferrer as updated.
-        installReferrer = mRandomUtils.getAlphaNumericString(10);
-        InstallReferrerHelper.setInstallReferrer(null, installReferrer);
-
-        org.junit.Assert.assertFalse(called[0]);
-        org.junit.Assert.assertFalse(called[1]);
+        installReferrer = mRandomUtils.getAlphaNumericString(10)
+        InstallReferrerHelper.setInstallReferrer(this.mContext, installReferrer)
+        Assert.assertFalse(called[0])
+        Assert.assertFalse(called[1])
     }
 
     @Test
-    public void testRegisterWebView() throws JSONException, InterruptedException {
-        MParticle.setInstance(null);
-        final String token = mRandomUtils.getAlphaNumericString(15);
-        mServer.setupConfigResponse(new JSONObject().put(ConfigManager.WORKSPACE_TOKEN, token).toString());
-        startMParticle();
-        final Map<String, Object> jsInterfaces = new HashMap<String, Object>();
-        final MPLatch latch = new MPLatch(1);
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                WebView webView = new WebView(mContext) {
-
-                    @Override
-                    public void addJavascriptInterface(Object object, String name) {
-                        jsInterfaces.put(name, object);
-                    }
-                };
-
-                MParticle.getInstance().registerWebView(webView);
-                assertTrue(jsInterfaces.get(MParticleJSInterface.INTERFACE_BASE_NAME + "_" + token+ "_v2") instanceof MParticleJSInterface);
-
-                String clientToken = mRandomUtils.getAlphaNumericString(15);
-                MParticle.getInstance().registerWebView(webView, clientToken);
-                assertTrue(jsInterfaces.get(MParticleJSInterface.INTERFACE_BASE_NAME + "_" + clientToken + "_v2") instanceof MParticleJSInterface);
-                latch.countDown();
+    @Throws(JSONException::class, InterruptedException::class)
+    fun testRegisterWebView() {
+        MParticle.setInstance(null)
+        val token = mRandomUtils.getAlphaNumericString(15)
+        mServer.setupConfigResponse(
+            JSONObject().put(ConfigManager.WORKSPACE_TOKEN, token).toString()
+        )
+        startMParticle()
+        val jsInterfaces: MutableMap<String, Any> = HashMap()
+        val latch = MPLatch(1)
+        Handler(Looper.getMainLooper()).post {
+            val webView: WebView = object : WebView(mContext) {
+                override fun addJavascriptInterface(`object`: Any, name: String) {
+                    jsInterfaces[name] = `object`
+                }
             }
-        });
-        latch.await();
-        assertEquals(2, jsInterfaces.size());
+            MParticle.getInstance()?.registerWebView(webView)
+            Assert.assertTrue(jsInterfaces[MParticleJSInterface.INTERFACE_BASE_NAME + "_" + token + "_v2"] is MParticleJSInterface)
+            val clientToken = mRandomUtils.getAlphaNumericString(15)
+            MParticle.getInstance()?.registerWebView(webView, clientToken)
+            Assert.assertTrue(jsInterfaces[MParticleJSInterface.INTERFACE_BASE_NAME + "_" + clientToken + "_v2"] is MParticleJSInterface)
+            latch.countDown()
+        }
+        latch.await()
+        Assert.assertEquals(2, jsInterfaces.size.toLong())
     }
 
-    private void ensureSessionActive() {
-        if (!MParticle.getInstance().isSessionActive()) {
-            MParticle.getInstance().logEvent(TestingUtils.getInstance().getRandomMPEventSimple());
-            assertTrue(MParticle.getInstance().isSessionActive());
+    private fun ensureSessionActive() {
+        if (!MParticle.getInstance()?.isSessionActive!!) {
+            MParticle.getInstance()?.logEvent(TestingUtils.getInstance().randomMPEventSimple)
+            MParticle.getInstance()?.isSessionActive?.let { Assert.assertTrue(it) }
         }
     }
 
     @OrchestratorOnly
     @Test
-    public void testResetSync() throws JSONException, InterruptedException {
-        testReset(new Runnable() {
-            @Override
-            public void run() {
-                MParticle.reset(mContext);
-            }
-        });
+    @Throws(JSONException::class, InterruptedException::class)
+    fun testResetSync() {
+        testReset { MParticle.reset(mContext) }
     }
 
     @OrchestratorOnly
     @Test
-    public void testResetAsync() throws JSONException, InterruptedException {
-        testReset(new Runnable() {
-            @Override
-            public void run() {
-                final CountDownLatch latch = new MPLatch(1);
-                MParticle.reset(mContext, new MParticle.ResetListener() {
-                    @Override
-                    public void onReset() {
-                        latch.countDown();
-                    }
-                });
-                try {
-                    latch.await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+    @Throws(JSONException::class, InterruptedException::class)
+    fun testResetAsync() {
+        testReset {
+            val latch: CountDownLatch = MPLatch(1)
+            MParticle.reset(mContext) { latch.countDown() }
+            try {
+                latch.await()
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
             }
-        });
+        }
     }
 
     @OrchestratorOnly
     @Test
-    public void testResetIdentitySync() throws JSONException, InterruptedException {
-        testResetIdentityCall(new Runnable() {
-            @Override
-            public void run() {
-                MParticle.reset(mContext);
-            }
-        });
+    @Throws(JSONException::class, InterruptedException::class)
+    fun testResetIdentitySync() {
+        testResetIdentityCall { MParticle.reset(mContext) }
     }
 
     @OrchestratorOnly
     @Test
-    public void testResetIdentityAsync() throws JSONException, InterruptedException {
-        testResetIdentityCall(new Runnable() {
-            @Override
-            public void run() {
-                final CountDownLatch latch = new MPLatch(1);
-                MParticle.reset(mContext, new MParticle.ResetListener() {
-                    @Override
-                    public void onReset() {
-                        latch.countDown();
-                    }
-                });
-                try {
-                    latch.await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+    @Throws(JSONException::class, InterruptedException::class)
+    fun testResetIdentityAsync() {
+        testResetIdentityCall {
+            val latch: CountDownLatch = MPLatch(1)
+            MParticle.reset(mContext) { latch.countDown() }
+            try {
+                latch.await()
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
             }
-        });
+        }
     }
 
     @OrchestratorOnly
     @Test
-    public void testResetConfigCall() throws InterruptedException {
-        mServer.setupConfigResponse(configResponse, 100);
-        MParticle.getInstance().refreshConfiguration();
-        MParticle.reset(mContext);
+    @Throws(InterruptedException::class)
+    fun testResetConfigCall() {
+        mServer.setupConfigResponse(configResponse, 100)
+        MParticle.getInstance()?.refreshConfiguration()
+        MParticle.reset(mContext)
         //This sleep is here just to
-        Thread.sleep(100);
-        assertSDKGone();
+        Thread.sleep(100)
+        assertSDKGone()
     }
-
 
     /**
      * Test that Identity calls in progress will exit gracefully, and not trigger any callbacks.
      */
-    public void testResetIdentityCall(Runnable resetRunnable) throws InterruptedException {
-        final boolean[] called = new boolean[2];
-        IdentityStateListener crashListener = new IdentityStateListener() {
-            @Override
-            public void onUserIdentified(MParticleUser user, MParticleUser previousUser) {
-                assertTrue(called[0]);
-                throw new IllegalStateException("Should not be getting callbacks after reset");
-            }
-        };
-
-        mServer.setupHappyIdentify(ran.nextLong(), 100);
-        MParticle.getInstance().Identity().addIdentityStateListener(crashListener);
-        MParticle.getInstance().Identity().identify(IdentityApiRequest.withEmptyUser().build());
-
-        called[0] = true;
-        mServer.waitForVerify(new Matcher(mServer.Endpoints().getIdentifyUrl()));
-
-        resetRunnable.run();
-
-        assertSDKGone();
+    @Throws(InterruptedException::class)
+    fun testResetIdentityCall(resetRunnable: Runnable) {
+        val called = BooleanArray(2)
+        val crashListener = IdentityStateListener { user, previousUser ->
+            Assert.assertTrue(called[0])
+            throw IllegalStateException("Should not be getting callbacks after reset")
+        }
+        mServer.setupHappyIdentify(ran.nextLong(), 100)
+        MParticle.getInstance()?.Identity()?.addIdentityStateListener(crashListener)
+        MParticle.getInstance()?.Identity()?.identify(IdentityApiRequest.withEmptyUser().build())
+        called[0] = true
+        mServer.waitForVerify(Matcher(mServer.Endpoints().identifyUrl))
+        resetRunnable.run()
+        assertSDKGone()
     }
 
     @Test
-    public void testPushEnabledApi() throws InterruptedException {
-        String senderId = "senderId";
-        startMParticle();
-        MParticle.getInstance().Messaging().enablePushNotifications(senderId);
-        String fetchedSenderId = MParticle.getInstance().Internal().getConfigManager().getPushSenderId();
-        assertTrue(MParticle.getInstance().Internal().getConfigManager().isPushEnabled());
-
-        assertEquals(senderId, fetchedSenderId);
-
-        String otherSenderId = "senderIdLogPushRegistration";
-        MParticle.getInstance().logPushRegistration("instanceId", otherSenderId);
-        fetchedSenderId = MParticle.getInstance().Internal().getConfigManager().getPushSenderId();
-        assertEquals(otherSenderId, fetchedSenderId);
-
-        MParticle.getInstance().Messaging().disablePushNotifications();
-        fetchedSenderId = MParticle.getInstance().Internal().getConfigManager().getPushSenderId();
-        assertFalse(MParticle.getInstance().Internal().getConfigManager().isPushEnabled());
-        assertNull(fetchedSenderId);
+    @Throws(InterruptedException::class)
+    fun testPushEnabledApi() {
+        val senderId = "senderId"
+        startMParticle()
+        MParticle.getInstance()?.Messaging()?.enablePushNotifications(senderId)
+        var fetchedSenderId: String? =
+            MParticle.getInstance()?.mInternal?.configManager?.pushSenderId
+        MParticle.getInstance()?.mInternal?.configManager?.isPushEnabled
+            ?.let { Assert.assertTrue(it) }
+        Assert.assertEquals(senderId, fetchedSenderId)
+        val otherSenderId = "senderIdLogPushRegistration"
+        MParticle.getInstance()?.logPushRegistration("instanceId", otherSenderId)
+        fetchedSenderId = MParticle.getInstance()?.mInternal?.configManager?.pushSenderId
+        Assert.assertEquals(otherSenderId, fetchedSenderId)
+        MParticle.getInstance()?.Messaging()?.disablePushNotifications()
+        fetchedSenderId = MParticle.getInstance()?.mInternal?.configManager?.pushSenderId
+        MParticle.getInstance()?.mInternal?.configManager?.isPushEnabled
+            ?.let { Assert.assertFalse(it) }
+        Assert.assertNull(fetchedSenderId)
     }
 
     @Test
-    public void testLogPushRegistrationModifyMessages() throws InterruptedException {
-        PushRegistrationTest pushRegistrationTest = new PushRegistrationTest().setServer(mServer);
-        pushRegistrationTest.setContext(mContext);
-        for (final PushRegistrationTest.SetPush setPush: pushRegistrationTest.setPushes) {
-            final PushRegistrationHelper.PushRegistration oldRegistration = new PushRegistrationHelper.PushRegistration(mRandomUtils.getAlphaNumericString(10), mRandomUtils.getAlphaNumericString(15));
-            setPush.setPushRegistration(oldRegistration);
-            final PushRegistrationHelper.PushRegistration newPushRegistration = new PushRegistrationHelper.PushRegistration(mRandomUtils.getAlphaNumericString(10), mRandomUtils.getAlphaNumericString(15));
-            final CountDownLatch latch = new MPLatch(1);
-            final AndroidUtils.Mutable<Boolean> received = new AndroidUtils.Mutable<Boolean>(false);
-            mServer.waitForVerify(new Matcher(mServer.Endpoints().getModifyUrl(mStartingMpid)).bodyMatch(new MockServer.JSONMatch() {
-                @Override
-                public boolean isMatch(JSONObject jsonObject) {
-                    if (jsonObject.has("identity_changes")) {
-                        try {
-                            JSONArray identityChanges = jsonObject.getJSONArray("identity_changes");
-                            assertEquals(1, identityChanges.length());
-                            JSONObject identityChange = identityChanges.getJSONObject(0);
-                            String failureMessage = "When " + oldRegistration + " set with: " + setPush.getName();
+    @Throws(InterruptedException::class)
+    fun testLogPushRegistrationModifyMessages() {
+        val pushRegistrationTest = PushRegistrationTest().setServer(mServer)
+        pushRegistrationTest.setContext(mContext)
+        for (setPush in pushRegistrationTest.setPushes) {
+            val oldRegistration = PushRegistration(
+                mRandomUtils.getAlphaNumericString(10),
+                mRandomUtils.getAlphaNumericString(15)
+            )
+            setPush.setPushRegistration(oldRegistration)
+            val newPushRegistration = PushRegistration(
+                mRandomUtils.getAlphaNumericString(10),
+                mRandomUtils.getAlphaNumericString(15)
+            )
+            val latch: CountDownLatch = MPLatch(1)
+            val received = AndroidUtils.Mutable(false)
+            mServer.waitForVerify(
+                Matcher(mServer.Endpoints().getModifyUrl(mStartingMpid)).bodyMatch(
+                    JSONMatch { jsonObject ->
+                        if (jsonObject.has("identity_changes")) {
+                            try {
+                                val identityChanges = jsonObject.getJSONArray("identity_changes")
+                                Assert.assertEquals(1, identityChanges.length().toLong())
+                                val identityChange = identityChanges.getJSONObject(0)
+                                val failureMessage =
+                                    "When " + oldRegistration + " set with: " + setPush.name
 
-                            //This is a wierd case. We might be setting the old pushRegistration with "logPushRegistration()",
-                            //which will kick of its own modify request. We want to ignore this if this is the case.
-                            if (identityChange.getString("new_value").equals(oldRegistration.instanceId)) {
-                                return false;
+                                //This is a wierd case. We might be setting the old pushRegistration with "logPushRegistration()",
+                                //which will kick of its own modify request. We want to ignore this if this is the case.
+                                if (identityChange.getString("new_value") == oldRegistration.instanceId) {
+                                    return@JSONMatch false
+                                }
+                                Assert.assertEquals(
+                                    failureMessage,
+                                    oldRegistration.instanceId,
+                                    identityChange.getString("old_value")
+                                )
+                                Assert.assertEquals(
+                                    failureMessage,
+                                    newPushRegistration.instanceId,
+                                    identityChange.getString("new_value")
+                                )
+                                Assert.assertEquals(
+                                    failureMessage,
+                                    "push_token",
+                                    identityChange.getString("identity_type")
+                                )
+                            } catch (jse: JSONException) {
+                                jse.toString()
                             }
-                            assertEquals(failureMessage, oldRegistration.instanceId, identityChange.getString("old_value"));
-                            assertEquals(failureMessage, newPushRegistration.instanceId, identityChange.getString("new_value"));
-                            assertEquals(failureMessage, "push_token", identityChange.getString("identity_type"));
-                        } catch (JSONException jse) {
-                            jse.toString();
+                            return@JSONMatch true
                         }
-                        return true;
-                    }
-                    return false;
-                }
-            }), new MockServer.RequestReceivedCallback() {
-                @Override
-                public void onRequestReceived(Request request) {
-                    received.value = true;
-                    latch.countDown();
-                }
-            });
-            MParticle.getInstance().logPushRegistration(newPushRegistration.instanceId, newPushRegistration.senderId);
-            latch.await();
+                        false
+                    })
+            ) {
+                received.value = true
+                latch.countDown()
+            }
+            MParticle.getInstance()
+                ?.logPushRegistration(newPushRegistration.instanceId, newPushRegistration.senderId)
+            latch.await()
         }
     }
 
     @Test
-    public void testSetLocation() {
-        Location location = new Location("");
-        MParticle.getInstance().setLocation(location);
-        assertEquals(location, MParticle.getInstance().mMessageManager.getLocation());
-        MParticle.getInstance().setLocation(null);
-        assertNull(MParticle.getInstance().mMessageManager.getLocation());
+    fun testSetLocation() {
+        val location = Location("")
+        MParticle.getInstance()?.setLocation(location)
+        Assert.assertEquals(location, MParticle.getInstance()?.mMessageManager?.location)
+        MParticle.getInstance()?.setLocation(null)
+        Assert.assertNull(MParticle.getInstance()?.mMessageManager?.location)
     }
 
-    private void testReset(Runnable resetRunnable) throws JSONException, InterruptedException {
-        for (int i = 0; i < 10; i++) {
-            MParticle.getInstance().logEvent(TestingUtils.getInstance().getRandomMPEventRich());
+    @Throws(JSONException::class, InterruptedException::class)
+    private fun testReset(resetRunnable: Runnable) {
+        for (i in 0..9) {
+            MParticle.getInstance()?.logEvent(TestingUtils.getInstance().randomMPEventRich)
         }
-        for (int i = 0; i < 10; i++) {
-            MParticle.getInstance().Internal().getConfigManager().setMpid(ran.nextLong(), ran.nextBoolean());
+        for (i in 0..9) {
+            MParticle.getInstance()?.mInternal?.configManager
+                ?.setMpid(ran.nextLong(), ran.nextBoolean())
         }
-        JSONObject databaseJson = getDatabaseContents(Collections.singletonList("messages"));
-        assertTrue(databaseJson.getJSONArray("messages").length() > 0);
-        assertEquals(6, getAllTables().size());
-        assertTrue(10 < MParticle.getInstance().Internal().getConfigManager().getMpids().size());
+        val databaseJson = getDatabaseContents(listOf("messages"))
+        Assert.assertTrue(databaseJson.getJSONArray("messages").length() > 0)
+        Assert.assertEquals(6, allTables.size.toLong())
+        Assert.assertTrue(
+            10 < MParticle.getInstance()?.mInternal?.configManager?.mpids?.size!!
+        )
 
         //Set strict mode, so if we get any warning or error messages during the reset/restart phase,
         //it will throw an exception.
-        TestingUtils.setStrictMode(MParticle.LogLevel.WARNING);
-
-        resetRunnable.run();
-        assertSDKGone();
+        TestingUtils.setStrictMode(MParticle.LogLevel.WARNING)
+        resetRunnable.run()
+        assertSDKGone()
 
         //Restart the SDK, to the point where the initial Identity call returns, make sure there are no errors on startup.
-        TestingUtils.setStrictMode(MParticle.LogLevel.WARNING, "Failed to get MParticle instance, getInstance() called prior to start().");
-        beforeBase();
+        TestingUtils.setStrictMode(
+            MParticle.LogLevel.WARNING,
+            "Failed to get MParticle instance, getInstance() called prior to start()."
+        )
+        beforeBase()
     }
 
-    private void assertSDKGone() {
+    private fun assertSDKGone() {
         //Check post-reset state:
         //should be 2 entries in default SharedPreferences (the install boolean and the original install time)
         //and 0 other SharedPreferences tables.
@@ -378,33 +349,42 @@ public class MParticleTest extends BaseCleanStartedEachTest {
         //0 tables should exist.
         //Then we call DatabaseHelper.getInstance(Context).openDatabase, which should create the database,
         //and make sure it is created without an error message, and that all the tables are empty.
-        String sharedPrefsDirectory = mContext.getFilesDir().getPath().replace("files", "shared_prefs/");
-        File[] files = new File(sharedPrefsDirectory).listFiles();
-        for (File file : files) {
-            String sharedPreferenceName = file.getPath().replace(sharedPrefsDirectory, "").replace(".xml", "");
-            if (!sharedPreferenceName.equals("WebViewChromiumPrefs") && !sharedPreferenceName.equals("com.mparticle.test_preferences")) {
-                fail("SharedPreference file failed to clear:\n" + getSharedPrefsContents(sharedPreferenceName));
+        val sharedPrefsDirectory = mContext.filesDir.path.replace("files", "shared_prefs/")
+        val files = File(sharedPrefsDirectory).listFiles()
+        for (file in files!!) {
+            val sharedPreferenceName =
+                file.path.replace(sharedPrefsDirectory, "").replace(".xml", "")
+            if (sharedPreferenceName != "WebViewChromiumPrefs" && sharedPreferenceName != "com.mparticle.test_preferences") {
+                Assert.fail(
+                    """
+    SharedPreference file failed to clear:
+    ${getSharedPrefsContents(sharedPreferenceName)}
+    """.trimIndent()
+                )
             }
         }
-        assertEquals(0, mContext.databaseList().length);
+        Assert.assertEquals(0, mContext.databaseList().size.toLong())
         try {
-            JSONObject databaseJson = getDatabaseContents();
-            Iterator<String> keys = databaseJson.keys();
+            val databaseJson = databaseContents
+            val keys = databaseJson.keys()
             while (keys.hasNext()) {
-                String key = keys.next();
-                assertEquals(key, 0, databaseJson.getJSONArray(key).length());
+                val key = keys.next()
+                Assert.assertEquals(key, 0, databaseJson.getJSONArray(key).length().toLong())
             }
-        } catch (JSONException e) {
-            fail(e.getMessage());
+        } catch (e: JSONException) {
+            Assert.fail(e.message)
         }
     }
 
-    private String getSharedPrefsContents(String name) {
-        try {
-            SharedPreferences prefs = mContext.getSharedPreferences(name, Context.MODE_PRIVATE);
-            return name + ":\n" + new JSONObject(prefs.getAll()).toString(4);
-        } catch (JSONException e) {
-            return "error printing SharedPrefs :/";
+    private fun getSharedPrefsContents(name: String): String {
+        return try {
+            val prefs = mContext.getSharedPreferences(name, Context.MODE_PRIVATE)
+            """
+     $name:
+     ${JSONObject(prefs.all).toString(4)}
+     """.trimIndent()
+        } catch (e: JSONException) {
+            "error printing SharedPrefs :/"
         }
     }
 }

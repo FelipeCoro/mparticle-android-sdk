@@ -1,21 +1,20 @@
-package com.mparticle.networking;
+package com.mparticle.networking
 
-import com.mparticle.MParticle;
-import com.mparticle.MParticleOptions;
+import com.mparticle.MParticle
+import com.mparticle.MParticleOptions
 
-public class PinningTestNetworkOptionsDisabled extends PinningTest{
-
-    @Override
-    protected boolean shouldPin() {
-        return true;
+class PinningTestNetworkOptionsDisabled : PinningTest() {
+    override fun shouldPin(): Boolean {
+        return true
     }
 
-    @Override
-    protected MParticleOptions.Builder transformMParticleOptions(MParticleOptions.Builder builder) {
+    override fun transformMParticleOptions(builder: MParticleOptions.Builder): MParticleOptions.Builder {
         return builder
-                .environment(MParticle.Environment.Production)
-                .networkOptions(NetworkOptions.builder()
-                        .setPinningDisabledInDevelopment(true)
-                        .build());
+            .environment(MParticle.Environment.Production)
+            .networkOptions(
+                NetworkOptions.builder()
+                    .setPinningDisabledInDevelopment(true)
+                    .build()
+            )
     }
 }

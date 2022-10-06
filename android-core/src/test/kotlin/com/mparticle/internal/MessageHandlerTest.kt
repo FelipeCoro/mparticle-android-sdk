@@ -1,88 +1,86 @@
-package com.mparticle.internal;
+package com.mparticle.internal
 
-import android.os.Message;
+import android.os.Message
+import org.powermock.modules.junit4.PowerMockRunner
+import com.mparticle.internal.ConfigManager
+import com.mparticle.internal.MessageManager
+import com.mparticle.internal.database.services.MParticleDBManager
+import com.mparticle.MParticle
+import com.mparticle.MockMParticle
+import com.mparticle.internal.AppStateManager
+import com.mparticle.mock.MockContext
+import com.mparticle.testutils.AndroidUtils
+import com.mparticle.internal.database.MPDatabase
+import com.mparticle.identity.AliasRequest
+import com.mparticle.testutils.TestingUtils
+import com.mparticle.internal.messages.MPAliasMessage
+import com.mparticle.internal.Constants.MessageKey
+import junit.framework.TestCase
+import org.json.JSONException
+import org.json.JSONObject
+import org.junit.Assert
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.mockito.Mockito
+import java.lang.Exception
 
-import com.mparticle.MParticle;
-import com.mparticle.MockMParticle;
-import com.mparticle.identity.AliasRequest;
-import com.mparticle.internal.database.MPDatabase;
-import com.mparticle.internal.database.services.MParticleDBManager;
-import com.mparticle.internal.messages.MPAliasMessage;
-import com.mparticle.mock.MockContext;
-import com.mparticle.testutils.AndroidUtils;
-import com.mparticle.testutils.TestingUtils;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
-import org.powermock.modules.junit4.PowerMockRunner;
-
-import static com.mparticle.internal.Constants.MessageKey.REQUEST_ID;
-import static com.mparticle.testutils.TestingUtils.assertJsonEqual;
-import static junit.framework.TestCase.assertNull;
-import static org.junit.Assert.assertNotNull;
-
-@RunWith(PowerMockRunner.class)
-public class MessageHandlerTest {
-    ConfigManager mConfigManager;
-    MessageHandler handler;
-    MessageManager mMessageManager;
-    MParticleDBManager mParticleDatabaseManager;
-
+@RunWith(PowerMockRunner::class)
+class MessageHandlerTest {
+    var mConfigManager: ConfigManager? = null
+    private var handler: MessageHandler? = null
+    var mMessageManager: MessageManager? = null
+    var mParticleDatabaseManager: MParticleDBManager? = null
     @Before
-    public void setUp() throws Exception {
-        MParticle.setInstance(new MockMParticle());
-        AppStateManager stateManager = Mockito.mock(AppStateManager.class);
-        mConfigManager = MParticle.getInstance().Internal().getConfigManager();
-        mMessageManager = Mockito.mock(MessageManager.class);
-        Mockito.when(mMessageManager.getApiKey()).thenReturn("apiKey");
-        mParticleDatabaseManager = Mockito.mock(MParticleDBManager.class);
-        handler = new MessageHandler(mMessageManager, new MockContext(), mParticleDatabaseManager, "dataplan1", 1) {
-            @Override
-            boolean databaseAvailable() {
-                return true;
+    @Throws(Exception::class)
+    fun setUp() {
+        MParticle.setInstance(MockMParticle())
+        mConfigManager = MParticle.getInstance()?.Internal()?.configManager
+        Mockito.`when`(Mockito.mock(MessageManager::class.java).apiKey).thenReturn("apiKey")
+        mParticleDatabaseManager = Mockito.mock(MParticleDBManager::class.java)
+        handler = object : MessageHandler(
+            mMessageManager,
+            MockContext(),
+            mParticleDatabaseManager,
+            "dataplan1",
+            1
+        ) {
+            public override fun databaseAvailable(): Boolean {
+                return true
             }
-        };
+        }
     }
 
-
     @Test
-    public void testInsertAliasRequest() throws JSONException {
-        final AndroidUtils.Mutable<JSONObject> insertedAliasRequest = new AndroidUtils.Mutable<JSONObject>(null);
-        Mockito.when(mConfigManager.getDeviceApplicationStamp()).thenReturn("das");
-
-        MParticleDBManager database = new MParticleDBManager(new MockContext()) {
-            @Override
-            public void insertAliasRequest(String apiKey, JSONObject request) {
-                insertedAliasRequest.value = request;
+    @Throws(JSONException::class)
+    fun testInsertAliasRequest() {
+        val insertedAliasRequest = AndroidUtils.Mutable<JSONObject?>(null)
+        Mockito.`when`(mConfigManager?.deviceApplicationStamp).thenReturn("das")
+        val database: MParticleDBManager = object : MParticleDBManager(MockContext()) {
+            override fun insertAliasRequest(apiKey: String, request: JSONObject?) {
+                insertedAliasRequest.value = request
             }
 
-            @Override
-            public MPDatabase getDatabase() {
-                return null;
+            override fun getDatabase(): MPDatabase? {
+                return null
             }
-        };
+        }
+        handler?.mMParticleDBManager = database
 
-        handler.mMParticleDBManager = database;
+        TestCase.assertNull(insertedAliasRequest.value)
 
-        assertNull(insertedAliasRequest.value);
+        val aliasRequest = TestingUtils.getInstance().randomAliasRequest
+        val aliasMessage = MPAliasMessage(aliasRequest, "das", "apiKey")
 
-        AliasRequest aliasRequest = TestingUtils.getInstance().getRandomAliasRequest();
-        MPAliasMessage aliasMessage = new MPAliasMessage(aliasRequest, "das","apiKey");;
+        val mockMessage = Mockito.mock(Message::class.java)
+        mockMessage.what = MessageHandler.STORE_ALIAS_MESSAGE
+        mockMessage.obj = aliasMessage
+        handler?.handleMessageImpl(mockMessage)
 
-        Message mockMessage = Mockito.mock(Message.class);
-        mockMessage.what = MessageHandler.STORE_ALIAS_MESSAGE;
-        mockMessage.obj = aliasMessage;
-        handler.handleMessageImpl(mockMessage);
+        TestCase.assertNotNull(insertedAliasRequest.value)
 
-
-        assertNotNull(insertedAliasRequest.value);
-
-        aliasMessage.remove(REQUEST_ID);
-        insertedAliasRequest.value.remove(REQUEST_ID);
-        assertJsonEqual(aliasMessage, insertedAliasRequest.value);
+        aliasMessage.remove(MessageKey.REQUEST_ID)
+        insertedAliasRequest.value?.remove(MessageKey.REQUEST_ID)
+        TestingUtils.assertJsonEqual(aliasMessage, insertedAliasRequest.value)
     }
 }

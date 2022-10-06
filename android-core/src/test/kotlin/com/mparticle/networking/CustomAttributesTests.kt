@@ -36,7 +36,7 @@ class CustomAttributesTests {
     fun testMapSerialization() {
         fun test(attributes: Map<String, String?>?) {
             assertNotNull(attributes)
-            var stringifiedCustomAttributes = attributes["list"]!!
+            val stringifiedCustomAttributes = attributes["list"]!!
             assertTrue { stringifiedCustomAttributes.contains("foo=bar") }
             assertTrue { stringifiedCustomAttributes.contains("this=that") }
             stringifiedCustomAttributes
@@ -67,7 +67,7 @@ class CustomAttributesTests {
 
     @Test
     fun testJSONSerialization() {
-        val customAttributesMap = mutableMapOf<String, Any>("list" to mapOf("foo" to "bar", "this" to "that").let { JSONObject(it.toMap()) })
+        val customAttributesMap = mutableMapOf<String, Any>("list" to JSONObject(mapOf("foo" to "bar", "this" to "that").toMap()))
         val serialized = "{\"foo\":\"bar\",\"this\":\"that\"}"
         MPEvent.Builder("Test Event")
             .customAttributes(customAttributesMap)

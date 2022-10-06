@@ -91,7 +91,7 @@ class ConfigRequestTests : BaseCleanInstallEachTest() {
 
         mServer.setupConfigResponse(simpleConfigWithKits.toString(), 100)
         setCachedConfig(JSONObject())
-        mServer.waitForVerify(Matcher(mServer.Endpoints().configUrl)) { request ->
+        mServer.waitForVerify(Matcher(mServer.Endpoints().configUrl)) {
             assertTrue {
                 MPUtility.isEmpty(
                     MParticle.getInstance()!!.Internal().configManager.latestKitConfiguration

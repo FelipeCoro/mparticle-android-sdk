@@ -134,6 +134,6 @@ class ConfigMigrationTest : BaseCleanInstallEachTest() {
     private fun assertNewConfigState(config: JSONObject) {
         val configString = ConfigManager.getPreferences(mContext).getString(ConfigManager.CONFIG_JSON, null)
         assertNull(JSONObject(configString).optJSONArray(ConfigManager.KEY_EMBEDDED_KITS))
-        assertEquals(config.optString(ConfigManager.KEY_EMBEDDED_KITS, null), ConfigManager.getInstance(mContext).kitConfigPreferences.getString(ConfigManager.KIT_CONFIG_KEY, null))
+        assertEquals(config.optString(ConfigManager.KEY_EMBEDDED_KITS, ""), ConfigManager.getInstance(mContext).kitConfigPreferences.getString(ConfigManager.KIT_CONFIG_KEY, null))
     }
 }
