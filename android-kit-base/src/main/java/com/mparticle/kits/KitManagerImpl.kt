@@ -496,7 +496,7 @@ open class KitManagerImpl( // ==================================================
                                         )
                                         messageType = ReportingMessage.MessageType.COMMERCE_EVENT
                                     }
-                                    if (report != null && report.size > 0) {
+                                    if (report != null && report.isNotEmpty()) {
                                         forwarded = true
                                         for (message in report) {
                                             masterMessage.addProjectionReport(
@@ -990,7 +990,7 @@ open class KitManagerImpl( // ==================================================
                                 eventCopy
                             )
                         }
-                        if (messages != null && messages.size > 0) {
+                        if (messages != null && messages.isNotEmpty()) {
                             reportingMessages.addAll(messages)
                         }
                     } else {
@@ -1005,7 +1005,7 @@ open class KitManagerImpl( // ==================================================
                                 !MPUtility.isEmpty(messages),
                                 projectedEvent
                             )
-                            if (messages != null && messages.size > 0) {
+                            if (messages != null && messages.isNotEmpty()) {
                                 forwarded = true
                                 for (message in messages) {
                                     val report = ProjectionReport(
@@ -1034,7 +1034,7 @@ open class KitManagerImpl( // ==================================================
         for (provider in providers.values) {
             try {
                 if (provider is BatchListener) {
-                    val jsonObject = JSONObject(batch)
+                    val jsonObject = batch?.let { JSONObject(it) }
                     val reportingMessages = (provider as BatchListener).logBatch(jsonObject)
                     reportingManager.logAll(reportingMessages)
                 }
