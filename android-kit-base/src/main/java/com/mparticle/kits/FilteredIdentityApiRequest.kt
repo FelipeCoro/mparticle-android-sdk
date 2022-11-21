@@ -1,38 +1,40 @@
-package com.mparticle.kits;
+package com.mparticle.kits
 
-import com.mparticle.MParticle;
-import com.mparticle.identity.IdentityApiRequest;
+import com.mparticle.MParticle.IdentityType
+import com.mparticle.identity.IdentityApiRequest
 
-import java.util.HashMap;
-import java.util.Map;
+class FilteredIdentityApiRequest internal constructor(
+    identityApiRequest: IdentityApiRequest?,
+    provider: KitIntegration
+) {
+    var provider: KitIntegration
 
-public class FilteredIdentityApiRequest {
-    KitIntegration provider;
-    Map<MParticle.IdentityType, String> userIdentities = new HashMap<>();
-    
-    FilteredIdentityApiRequest(IdentityApiRequest identityApiRequest, KitIntegration provider) {
+    var userIdentities: Map<IdentityType, String?> = HashMap()
+        get() {
+            val identities = field
+            val filteredIdentities: MutableMap<IdentityType, String?> = HashMap(identities.size)
+            for ((key, value) in identities) {
+                if (provider.configuration.shouldSetIdentity(key)) {
+                    filteredIdentities[key] = value
+                }
+            }
+            return filteredIdentities
+        }
+
+    init {
         if (identityApiRequest != null) {
-            userIdentities = new HashMap<>(identityApiRequest.getUserIdentities());
-            if (provider.getKitManager()!= null) {
-                userIdentities = provider.getKitManager().getDataplanFilter().transformIdentities(userIdentities);
+            userIdentities = HashMap(identityApiRequest.userIdentities)
+            if (provider.kitManager != null) {
+                userIdentities =
+                    provider.kitManager.dataplanFilter?.transformIdentities(userIdentities)!!
             }
         }
-        this.provider = provider;
+        this.provider = provider
     }
 
-    @Deprecated
-    public Map<MParticle.IdentityType, String> getNewIdentities() {
-        return getUserIdentities();
-    }
+    @get:Deprecated("")
+    val newIdentities: Map<IdentityType, String?>
+        get() = userIdentities
 
-    public Map<MParticle.IdentityType, String> getUserIdentities() {
-        Map<MParticle.IdentityType, String> identities = userIdentities;
-        Map<MParticle.IdentityType, String> filteredIdentities = new HashMap<MParticle.IdentityType, String>(identities.size());
-        for (Map.Entry<MParticle.IdentityType, String> entry : identities.entrySet()) {
-            if (provider.getConfiguration().shouldSetIdentity(entry.getKey())) {
-                filteredIdentities.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return filteredIdentities;
-    }
+
 }
