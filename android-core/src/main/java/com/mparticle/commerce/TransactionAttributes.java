@@ -53,7 +53,7 @@ public class TransactionAttributes {
     }
 
     @NonNull
-    public TransactionAttributes setId(@NonNull String id) {
+    public TransactionAttributes setId(String id) {
         mId = id;
         return this;
     }

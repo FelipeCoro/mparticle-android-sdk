@@ -7,32 +7,34 @@ import com.mparticle.kits.ReportingMessage
 class EventTestKit : ListenerTestKit(), KitIntegration.EventListener {
     var onLogEvent: (MPEvent) -> MutableList<ReportingMessage>? = { null }
 
-    override fun logEvent(baseEvent: MPEvent): MutableList<ReportingMessage>? {
-        return onLogEvent(baseEvent)
+
+    override fun logEvent(event: MPEvent?): List<ReportingMessage?>? {
+        return event?.let { onLogEvent(it) }
     }
+
     override fun leaveBreadcrumb(breadcrumb: String?): MutableList<ReportingMessage> {
         TODO("Not yet implemented")
     }
 
     override fun logError(
         message: String?,
-        errorAttributes: MutableMap<String, String>?
-    ): MutableList<ReportingMessage> {
+        errorAttributes: Map<String, String>?
+    ): List<ReportingMessage?>? {
         TODO("Not yet implemented")
     }
 
     override fun logException(
         exception: Exception?,
-        exceptionAttributes: MutableMap<String, String>?,
+        exceptionAttributes: Map<String, String>?,
         message: String?
-    ): MutableList<ReportingMessage> {
+    ): List<ReportingMessage?>? {
         TODO("Not yet implemented")
     }
 
     override fun logScreen(
         screenName: String?,
-        screenAttributes: MutableMap<String, String>?
-    ): MutableList<ReportingMessage> {
+        screenAttributes: Map<String?, String?>?
+    ): List<ReportingMessage?>? {
         TODO("Not yet implemented")
     }
 }

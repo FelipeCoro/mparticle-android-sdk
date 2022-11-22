@@ -10,7 +10,7 @@ import com.mparticle.mock.MockMParticle
 import org.junit.Assert
 import org.junit.Test
 import org.mockito.Mockito
-import java.util.LinkedList
+import java.util.*
 
 class KitIntegrationTest {
     @Test
@@ -18,14 +18,14 @@ class KitIntegrationTest {
     fun testGetAllUserAttributesWithoutLists() {
         MParticle.setInstance(MockMParticle())
         val integration: KitIntegration = object : KitIntegration() {
-            override fun getName(): String? {
-                return null
-            }
+
+            override val name: String? = null
+
 
             override fun onKitCreate(
-                settings: Map<String, String>,
-                context: Context
-            ): List<ReportingMessage>? {
+                settings: java.util.HashMap<String, String>,
+                context: Context?
+            ): List<ReportingMessage?>? {
                 return null
             }
 
@@ -85,15 +85,13 @@ class KitIntegrationTest {
     fun testGetAllUserAttributesWithoutListsWithFilters() {
         MParticle.setInstance(MockMParticle())
         val integration: KitIntegration = object : KitIntegration() {
-            override fun getName(): String? {
-                return null
-            }
+            override val name: String? = null
 
             override fun onKitCreate(
-                settings: Map<String, String>,
-                context: Context
-            ): List<ReportingMessage>? {
-                return null
+                settings: HashMap<String, String>,
+                context: Context?
+            ): List<ReportingMessage> {
+                return listOfNotNull()
             }
 
             override fun setOptOut(optedOut: Boolean): List<ReportingMessage>? {
@@ -178,37 +176,39 @@ class KitIntegrationTest {
     }
 
     private inner class AttributeListenerIntegration : KitIntegration(), AttributeListener {
-        override fun setUserAttribute(attributeKey: String, attributeValue: String) {}
-        override fun setUserAttributeList(attributeKey: String, attributeValueList: List<String>) {}
+        override fun setUserAttribute(attributeKey: String?, attributeValue: String?) {}
+        override fun setUserAttributeList(
+            attributeKey: String?,
+            attributeValueList: List<String?>?
+        ) {}
         override fun supportsAttributeLists(): Boolean {
             return true
         }
 
         override fun setAllUserAttributes(
-            userAttributes: Map<String, String>,
-            userAttributeLists: Map<String, List<String>>
+            userAttributes: Map<String, String?>,
+            userAttributeLists: Map<String, List<String>?>
         ) {
         }
 
-        override fun removeUserAttribute(key: String) {}
-        override fun setUserIdentity(identityType: IdentityType, identity: String) {}
-        override fun removeUserIdentity(identityType: IdentityType) {}
+        override fun removeUserAttribute(key: String?) {}
+        override fun setUserIdentity(identityType: IdentityType?, identity: String?) {}
+        override fun removeUserIdentity(identityType: IdentityType?) {}
         override fun logout(): List<ReportingMessage>? {
             return null
         }
 
-        override fun getName(): String? {
-            return null
-        }
+        override val name: String? = null
+
 
         override fun onKitCreate(
-            settings: Map<String, String>,
-            context: Context
-        ): List<ReportingMessage>? {
+            settings: HashMap<String, String>,
+            context: Context?
+        ): List<ReportingMessage?>? {
             return null
         }
 
-        override fun setOptOut(optedOut: Boolean): List<ReportingMessage> ? {
+        override fun setOptOut(optedOut: Boolean): List<ReportingMessage>? {
             return null
         }
     }

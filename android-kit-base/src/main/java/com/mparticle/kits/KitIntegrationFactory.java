@@ -67,7 +67,7 @@ public class KitIntegrationFactory {
     public KitIntegration createInstance(KitManagerImpl manager, KitConfiguration configuration) throws JSONException, ClassNotFoundException{
         KitIntegration kit = createInstance(manager, configuration.getKitId());
         if (kit != null) {
-            kit.setConfiguration(configuration);
+            kit.setKitConfiguration(configuration);
         }
         return kit;
     }

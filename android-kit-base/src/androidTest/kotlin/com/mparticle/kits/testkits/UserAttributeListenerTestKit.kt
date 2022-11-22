@@ -10,7 +10,7 @@ open class UserAttributeListenerTestKit : ListenerTestKit(), KitIntegration.User
     var onSetUserAttribute: ((key: String?, value: Any?, user: FilteredMParticleUser?) -> Unit)? = null
     var onSetUserTag: ((key: String?, user: FilteredMParticleUser?) -> Unit)? = null
     var onSetUserAttributeList: ((attributeKey: String?, attributeValueList: List<String?>?, user: FilteredMParticleUser?) -> Unit)? = null
-    var onSetAllUserAttributes: ((userAttributes: Map<String?, String?>?, userAttributeLists: Map<String?, List<String?>?>?, user: FilteredMParticleUser?) -> Unit)? = null
+    var onSetAllUserAttributes: ((userAttributes: Map<String, String?>?, userAttributeLists: Map<String, List<String?>?>?, user: FilteredMParticleUser?) -> Unit)? = null
     var supportsAttributeLists: (() -> Boolean)? = null
     var onConsentStateUpdated: ((oldState: ConsentState?, newState: ConsentState?, user: FilteredMParticleUser?) -> Unit)? = null
 
@@ -18,7 +18,11 @@ open class UserAttributeListenerTestKit : ListenerTestKit(), KitIntegration.User
         onConsentStateUpdated?.invoke(oldState, newState, user)
     }
 
-    override fun onSetAllUserAttributes(userAttributes: Map<String?, String?>?, userAttributeLists: Map<String?, List<String>>?, user: FilteredMParticleUser?) {
+    override fun onSetAllUserAttributes(
+        userAttributes: Map<String, String?>,
+        userAttributeLists: Map<String, List<String>?>,
+        user: FilteredMParticleUser?
+    ) {
         onSetAllUserAttributes?.invoke(userAttributes, userAttributeLists, user)
         userAttributes?.forEach { onAttributeReceived?.invoke(it.key, it.value) }
     }
@@ -35,13 +39,24 @@ open class UserAttributeListenerTestKit : ListenerTestKit(), KitIntegration.User
         onUserReceived?.invoke(user)
     }
 
-    override fun onIncrementUserAttribute(key: String?, incrementedBy: Number, value: String?, user: FilteredMParticleUser?) {
-        onIncrementUserAttribute?.invoke(key, incrementedBy, value, user)
+    override fun onIncrementUserAttribute(
+        key: String?,
+        incrementedBy: Number?,
+        value: String?,
+        user: FilteredMParticleUser?
+    ) {
+        if (incrementedBy != null) {
+            onIncrementUserAttribute?.invoke(key, incrementedBy, value, user)
+        }
         onAttributeReceived?.invoke(key, value)
         onUserReceived?.invoke(user)
     }
 
-    override fun onSetUserAttributeList(attributeKey: String?, attributeValueList: MutableList<String>?, user: FilteredMParticleUser?) {
+    override fun onSetUserAttributeList(
+        attributeKey: String?,
+        attributeValueList: List<String?>?,
+        user: FilteredMParticleUser?
+    ) {
         onSetUserAttributeList?.invoke(attributeKey, attributeValueList, user)
         onAttributeReceived?.invoke(attributeKey, attributeValueList)
         onUserReceived?.invoke(user)

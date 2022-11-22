@@ -19,7 +19,7 @@ public class Impression {
      * @param listName a string name given to the list where the given Products displayed
      * @param product a Product to associate with the Impression
      */
-    public Impression(@NonNull String listName, @NonNull Product product) {
+    public Impression(@NonNull String listName, Product product) {
         super();
         mListName = listName;
         addProduct(product);

@@ -14,7 +14,7 @@ class FilteredIdentityApiRequest internal constructor(
             val identities = field
             val filteredIdentities: MutableMap<IdentityType, String?> = HashMap(identities.size)
             for ((key, value) in identities) {
-                if (provider.configuration.shouldSetIdentity(key)) {
+                if (provider.configuration?.shouldSetIdentity(key) == true) {
                     filteredIdentities[key] = value
                 }
             }
@@ -26,7 +26,7 @@ class FilteredIdentityApiRequest internal constructor(
             userIdentities = HashMap(identityApiRequest.userIdentities)
             if (provider.kitManager != null) {
                 userIdentities =
-                    provider.kitManager.dataplanFilter?.transformIdentities(userIdentities)!!
+                    provider.kitManager!!.dataplanFilter?.transformIdentities(userIdentities)!!
             }
         }
         this.provider = provider

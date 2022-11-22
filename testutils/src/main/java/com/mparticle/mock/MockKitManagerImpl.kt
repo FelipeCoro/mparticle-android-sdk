@@ -32,7 +32,7 @@ open class MockKitManagerImpl(
     }
 
     @Throws(JSONException::class)
-    override fun createKitConfiguration(configuration: JSONObject?): KitConfiguration {
+    override fun createKitConfiguration(configuration: JSONObject): KitConfiguration {
         return MockKitConfiguration.createKitConfiguration(configuration)
     }
 

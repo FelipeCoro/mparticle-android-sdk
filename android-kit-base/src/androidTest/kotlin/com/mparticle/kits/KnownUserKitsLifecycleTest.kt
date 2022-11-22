@@ -58,15 +58,14 @@ class KnownUserKitsLifecycleTest : BaseKitOptionsTest() {
     class TestKit2 : TestKit()
     class TestKit3 : TestKit()
     open class TestKit : ListenerTestKit() {
-        override fun getName(): String {
-            return "test kit" + i++
-        }
+        override val name = "test kit" + i++
+
 
         @Throws(IllegalArgumentException::class)
         override fun onKitCreate(
-            settings: Map<String, String>?,
-            context: Context
-        ): List<ReportingMessage> {
+            settings: HashMap<String, String>,
+            context: Context?
+        ): List<ReportingMessage>? {
             return emptyList()
         }
 

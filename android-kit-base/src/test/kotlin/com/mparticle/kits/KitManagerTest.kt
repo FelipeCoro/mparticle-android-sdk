@@ -187,10 +187,10 @@ class KitManagerTest {
             mockForesee.getSurveyUrl(
                 Mockito.any(
                     MutableMap::class.java
-                ) as MutableMap<String, String>?,
+                ) as MutableMap<String?, String>?,
                 Mockito.any(
                     MutableMap::class.java
-                ) as MutableMap<String, MutableList<String>>?
+                ) as MutableMap<String?, MutableList<String>>?
             )
         ).thenReturn(uri)
         manager.providers[MParticle.ServiceProviders.FORESEE_ID] = (mockForesee as KitIntegration)

@@ -847,7 +847,7 @@ public final class CommerceEvent extends BaseEvent {
          * @return returns this Builder for easy method chaining.
          */
         @NonNull
-        public Builder impressions(@NonNull List<Impression> impressions) {
+        public Builder impressions(List<Impression> impressions) {
             mImpressions = impressions;
             return this;
         }

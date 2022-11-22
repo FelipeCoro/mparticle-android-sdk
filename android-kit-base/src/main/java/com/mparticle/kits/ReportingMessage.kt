@@ -37,7 +37,7 @@ class ReportingMessage(
     private var mSessionId: String? = null
 
     init {
-        moduleId = provider.configuration.kitId
+        moduleId = provider.configuration?.kitId!!
         this.messageType = messageType
         this.timestamp = timestamp
         this.attributes = attributes

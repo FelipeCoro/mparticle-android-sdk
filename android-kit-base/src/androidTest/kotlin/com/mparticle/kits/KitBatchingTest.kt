@@ -9,9 +9,7 @@ import com.mparticle.networking.Matcher
 import com.mparticle.testutils.MPLatch
 import org.json.JSONArray
 import org.json.JSONObject
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
@@ -116,7 +114,7 @@ class KitBatchingTest : BaseKitOptionsTest() {
 
     class BatchKit : BaseTestKit(), KitIntegration.BatchListener {
         var batches = mutableListOf<JSONObject>()
-        override fun getName() = "Batch Kit"
+        override val name = "Batch Kit"
         private var latch = MPLatch(1)
 
         fun await() {
@@ -129,8 +127,10 @@ class KitBatchingTest : BaseKitOptionsTest() {
             return listOf()
         }
 
-        override fun logBatch(jsonObject: JSONObject): List<ReportingMessage> {
-            batches.add(jsonObject)
+        override fun logBatch(jsonObject: JSONObject?): List<ReportingMessage?>? {
+            if (jsonObject != null) {
+                batches.add(jsonObject)
+            }
             latch.countDown()
             return listOf()
         }

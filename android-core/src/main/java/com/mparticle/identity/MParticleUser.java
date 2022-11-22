@@ -108,7 +108,7 @@ public interface MParticleUser {
     /**
      * Query the ConsentState of this user
      */
-    @NonNull
+
     ConsentState getConsentState();
 
     /**

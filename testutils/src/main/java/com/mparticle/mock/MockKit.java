@@ -5,6 +5,10 @@ import android.content.Context;
 import com.mparticle.kits.KitIntegration;
 import com.mparticle.kits.ReportingMessage;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,8 +19,9 @@ public class MockKit extends KitIntegration {
         return "Mock Kit";
     }
 
+    @Nullable
     @Override
-    protected List<ReportingMessage> onKitCreate(Map<String, String> settings, Context context) {return null;}
+    public List<ReportingMessage> onKitCreate(@NotNull HashMap<String, String> settings, @Nullable Context context) {return null;}
 
     @Override
     public List<ReportingMessage> setOptOut(boolean optedOut) {

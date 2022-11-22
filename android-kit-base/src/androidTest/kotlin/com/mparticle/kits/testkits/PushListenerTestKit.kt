@@ -9,8 +9,10 @@ class PushListenerTestKit : BaseTestKit(), KitIntegration.PushListener {
     var onPushRegistration: (String?, String?) -> Boolean = { _, _ -> false }
     override fun willHandlePushMessage(intent: Intent?) = true
 
-    override fun onPushMessageReceived(context: Context, pushIntent: Intent?) {
-        onPushMessageReceived.invoke(context, pushIntent)
+    override fun onPushMessageReceived(context: Context?, pushIntent: Intent?) {
+        if (context != null) {
+            onPushMessageReceived.invoke(context, pushIntent)
+        }
     }
 
     override fun onPushRegistration(instanceId: String?, senderId: String?): Boolean {
