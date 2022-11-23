@@ -1,23 +1,15 @@
-package com.mparticle.kits;
+package com.mparticle.kits
 
-import androidx.annotation.NonNull;
+import com.mparticle.MParticle
+import com.mparticle.internal.Logger
+import org.json.JSONException
+import java.lang.reflect.Constructor
 
-import com.mparticle.MParticle;
-import com.mparticle.internal.Logger;
+open class KitIntegrationFactory {
+    val supportedKits: MutableMap<Int, Class<*>> = HashMap()
 
-import org.json.JSONException;
-
-import java.lang.reflect.Constructor;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-public class KitIntegrationFactory {
-
-    final Map<Integer, Class> supportedKits = new HashMap<>();
-
-    public KitIntegrationFactory() {
-        loadIntegrations();
+    init {
+        loadIntegrations()
     }
 
     /**
@@ -25,93 +17,99 @@ public class KitIntegrationFactory {
      *
      * @return a mapping of module Ids to kit classes
      */
-    protected Map<Integer, String> getKnownIntegrations() {
-        Map<Integer, String> kits = new HashMap<Integer, String>();
-        kits.put(MParticle.ServiceProviders.ADJUST,                     "com.mparticle.kits.AdjustKit");
-        kits.put(MParticle.ServiceProviders.APPBOY,                     "com.mparticle.kits.AppboyKit");
-        kits.put(MParticle.ServiceProviders.BRANCH_METRICS,             "com.mparticle.kits.BranchMetricsKit");
-        kits.put(MParticle.ServiceProviders.COMSCORE,                   "com.mparticle.kits.ComscoreKit");
-        kits.put(MParticle.ServiceProviders.KOCHAVA,                    "com.mparticle.kits.KochavaKit");
-        kits.put(MParticle.ServiceProviders.FORESEE_ID,                 "com.mparticle.kits.ForeseeKit");
-        kits.put(MParticle.ServiceProviders.LOCALYTICS,                 "com.mparticle.kits.LocalyticsKit");
-        kits.put(MParticle.ServiceProviders.FLURRY,                     "com.mparticle.kits.FlurryKit");
-        kits.put(MParticle.ServiceProviders.WOOTRIC,                    "com.mparticle.kits.WootricKit");
-        kits.put(MParticle.ServiceProviders.CRITTERCISM,                "com.mparticle.kits.CrittercismKit");
-        kits.put(MParticle.ServiceProviders.TUNE,                       "com.mparticle.kits.TuneKit");
-        kits.put(MParticle.ServiceProviders.APPSFLYER,                  "com.mparticle.kits.AppsFlyerKit");
-        kits.put(MParticle.ServiceProviders.APPTENTIVE,                 "com.mparticle.kits.ApptentiveKit");
-        kits.put(MParticle.ServiceProviders.BUTTON,                     "com.mparticle.kits.ButtonKit");
-        kits.put(MParticle.ServiceProviders.URBAN_AIRSHIP,              "com.mparticle.kits.UrbanAirshipKit");
-        kits.put(MParticle.ServiceProviders.LEANPLUM,                   "com.mparticle.kits.LeanplumKit");
-        kits.put(MParticle.ServiceProviders.APPTIMIZE,                  "com.mparticle.kits.ApptimizeKit");
-        kits.put(MParticle.ServiceProviders.REVEAL_MOBILE,              "com.mparticle.kits.RevealMobileKit");
-        kits.put(MParticle.ServiceProviders.RADAR,                      "com.mparticle.kits.RadarKit");
-        kits.put(MParticle.ServiceProviders.ITERABLE,                   "com.mparticle.kits.IterableKit");
-        kits.put(MParticle.ServiceProviders.SKYHOOK,                    "com.mparticle.kits.SkyhookKit");
-        kits.put(MParticle.ServiceProviders.SINGULAR,                   "com.mparticle.kits.SingularKit");
-        kits.put(MParticle.ServiceProviders.ADOBE,                      "com.mparticle.kits.AdobeKit");
-        kits.put(MParticle.ServiceProviders.TAPLYTICS,                  "com.mparticle.kits.TaplyticsKit");
-        kits.put(MParticle.ServiceProviders.OPTIMIZELY,                 "com.mparticle.kits.OptimizelyKit");
-        kits.put(MParticle.ServiceProviders.RESPONSYS,                  "com.mparticle.kits.ResponsysKit");
-        kits.put(MParticle.ServiceProviders.CLEVERTAP,                  "com.mparticle.kits.CleverTapKit");
-        kits.put(MParticle.ServiceProviders.GOOGLE_ANALYTICS_FIREBASE,  "com.mparticle.kits.GoogleAnalyticsFirebaseKit");
-        kits.put(MParticle.ServiceProviders.GOOGLE_ANALYTICS_FIREBASE_GA4,  "com.mparticle.kits.GoogleAnalyticsFirebaseGA4Kit");
-        kits.put(MParticle.ServiceProviders.PILGRIM,                    "com.mparticle.kits.PilgrimKit");
-        kits.put(MParticle.ServiceProviders.ONETRUST,                   "com.mparticle.kits.OneTrustKit");
-        kits.put(MParticle.ServiceProviders.SWRVE,                      "com.mparticle.kits.SwrveKit");
-        kits.put(MParticle.ServiceProviders.BLUESHIFT,                  "com.mparticle.kits.BlueshiftKit");
-        kits.put(MParticle.ServiceProviders.NEURA,                      "com.mparticle.kits.NeuraKit");
-        return kits;
-    }
-
-    public KitIntegration createInstance(KitManagerImpl manager, KitConfiguration configuration) throws JSONException, ClassNotFoundException{
-        KitIntegration kit = createInstance(manager, configuration.getKitId());
-        if (kit != null) {
-            kit.setKitConfiguration(configuration);
+    protected val knownIntegrations: Map<Int, String>
+        get() {
+            val kits: MutableMap<Int, String> = HashMap()
+            kits[MParticle.ServiceProviders.ADJUST] = "com.mparticle.kits.AdjustKit"
+            kits[MParticle.ServiceProviders.APPBOY] = "com.mparticle.kits.AppboyKit"
+            kits[MParticle.ServiceProviders.BRANCH_METRICS] =
+                "com.mparticle.kits.BranchMetricsKit"
+            kits[MParticle.ServiceProviders.COMSCORE] = "com.mparticle.kits.ComscoreKit"
+            kits[MParticle.ServiceProviders.KOCHAVA] = "com.mparticle.kits.KochavaKit"
+            kits[MParticle.ServiceProviders.FORESEE_ID] = "com.mparticle.kits.ForeseeKit"
+            kits[MParticle.ServiceProviders.LOCALYTICS] = "com.mparticle.kits.LocalyticsKit"
+            kits[MParticle.ServiceProviders.FLURRY] = "com.mparticle.kits.FlurryKit"
+            kits[MParticle.ServiceProviders.WOOTRIC] = "com.mparticle.kits.WootricKit"
+            kits[MParticle.ServiceProviders.CRITTERCISM] = "com.mparticle.kits.CrittercismKit"
+            kits[MParticle.ServiceProviders.TUNE] = "com.mparticle.kits.TuneKit"
+            kits[MParticle.ServiceProviders.APPSFLYER] = "com.mparticle.kits.AppsFlyerKit"
+            kits[MParticle.ServiceProviders.APPTENTIVE] = "com.mparticle.kits.ApptentiveKit"
+            kits[MParticle.ServiceProviders.BUTTON] = "com.mparticle.kits.ButtonKit"
+            kits[MParticle.ServiceProviders.URBAN_AIRSHIP] = "com.mparticle.kits.UrbanAirshipKit"
+            kits[MParticle.ServiceProviders.LEANPLUM] = "com.mparticle.kits.LeanplumKit"
+            kits[MParticle.ServiceProviders.APPTIMIZE] = "com.mparticle.kits.ApptimizeKit"
+            kits[MParticle.ServiceProviders.REVEAL_MOBILE] =
+                "com.mparticle.kits.RevealMobileKit"
+            kits[MParticle.ServiceProviders.RADAR] = "com.mparticle.kits.RadarKit"
+            kits[MParticle.ServiceProviders.ITERABLE] = "com.mparticle.kits.IterableKit"
+            kits[MParticle.ServiceProviders.SKYHOOK] = "com.mparticle.kits.SkyhookKit"
+            kits[MParticle.ServiceProviders.SINGULAR] = "com.mparticle.kits.SingularKit"
+            kits[MParticle.ServiceProviders.ADOBE] = "com.mparticle.kits.AdobeKit"
+            kits[MParticle.ServiceProviders.TAPLYTICS] = "com.mparticle.kits.TaplyticsKit"
+            kits[MParticle.ServiceProviders.OPTIMIZELY] = "com.mparticle.kits.OptimizelyKit"
+            kits[MParticle.ServiceProviders.RESPONSYS] = "com.mparticle.kits.ResponsysKit"
+            kits[MParticle.ServiceProviders.CLEVERTAP] = "com.mparticle.kits.CleverTapKit"
+            kits[MParticle.ServiceProviders.GOOGLE_ANALYTICS_FIREBASE] =
+                "com.mparticle.kits.GoogleAnalyticsFirebaseKit"
+            kits[MParticle.ServiceProviders.GOOGLE_ANALYTICS_FIREBASE_GA4] =
+                "com.mparticle.kits.GoogleAnalyticsFirebaseGA4Kit"
+            kits[MParticle.ServiceProviders.PILGRIM] = "com.mparticle.kits.PilgrimKit"
+            kits[MParticle.ServiceProviders.ONETRUST] = "com.mparticle.kits.OneTrustKit"
+            kits[MParticle.ServiceProviders.SWRVE] = "com.mparticle.kits.SwrveKit"
+            kits[MParticle.ServiceProviders.BLUESHIFT] = "com.mparticle.kits.BlueshiftKit"
+            kits[MParticle.ServiceProviders.NEURA] = "com.mparticle.kits.NeuraKit"
+            return kits
         }
-        return kit;
+
+    @Throws(JSONException::class, ClassNotFoundException::class)
+    fun createInstance(manager: KitManagerImpl?, configuration: KitConfiguration): KitIntegration? {
+        val kit = createInstance(manager, configuration.kitId)
+        kit?.setKitConfiguration(configuration)
+        return kit
     }
 
-    public KitIntegration createInstance(KitManagerImpl manager, int moduleId) throws JSONException, ClassNotFoundException{
-        if (!supportedKits.isEmpty()) {
+    @Throws(JSONException::class, ClassNotFoundException::class)
+    open fun createInstance(manager: KitManagerImpl?, moduleId: Int): KitIntegration? {
+        if (supportedKits.isNotEmpty()) {
             try {
-                Constructor<KitIntegration> constructor = supportedKits.get(moduleId).getConstructor();
-                constructor.setAccessible(true);
+                val constructor: Constructor<KitIntegration> = supportedKits[moduleId]!!
+                    .getConstructor() as Constructor<KitIntegration>
+                constructor.isAccessible = true
                 return constructor.newInstance()
-                        .setKitManager(manager);
-            } catch (Exception e) {
-                Logger.debug(e, "Failed to create Kit with ID: " + moduleId);
+                    .setKitManager(manager)
+            } catch (e: Exception) {
+                Logger.debug(e, "Failed to create Kit with ID: $moduleId")
             }
         }
-        return null;
+        return null
     }
 
-    private void loadIntegrations() {
-        Map<Integer, String> knownIntegrations = getKnownIntegrations();
-        for (Map.Entry<Integer, String> entry : knownIntegrations.entrySet()) {
-            Class kitClass = loadKit(entry.getValue());
+    private fun loadIntegrations() {
+        val knownIntegrations = knownIntegrations
+        for ((key, value) in knownIntegrations) {
+            val kitClass = loadKit(value)
             if (kitClass != null) {
-                supportedKits.put(entry.getKey(), kitClass);
-                Logger.debug(entry.getValue().substring(entry.getValue().lastIndexOf(".") + 1) + " detected.");
+                supportedKits[key] = kitClass
+                Logger.debug(value.substring(value.lastIndexOf(".") + 1) + " detected.")
             }
         }
     }
 
-    private Class loadKit(String className) {
+    private fun loadKit(className: String): Class<*>? {
         try {
-            return Class.forName(className);
-        } catch (Exception e) {
-            Logger.verbose("Kit not bundled: ", className);
+            return Class.forName(className)
+        } catch (e: Exception) {
+            Logger.verbose("Kit not bundled: ", className)
         }
-        return null;
+        return null
     }
 
-    public void addSupportedKit(int kitId, Class<? extends KitIntegration> kitIntegration) {
-        Class previousKit = supportedKits.get(kitId);
+    fun addSupportedKit(kitId: Int, kitIntegration: Class<out KitIntegration?>) {
+        val previousKit = supportedKits[kitId]
         if (previousKit != null) {
-            Logger.warning("Overriding kitId " + kitId + ". KitIntegration: " + kitIntegration.getName() + " will replace existing KitIntegration: " + previousKit.getName());
+            Logger.warning("Overriding kitId " + kitId + ". KitIntegration: " + kitIntegration.name + " will replace existing KitIntegration: " + previousKit.name)
         }
-        supportedKits.put(kitId, kitIntegration);
+        supportedKits[kitId] = kitIntegration
     }
 
     /**
@@ -119,11 +117,11 @@ public class KitIntegrationFactory {
      *
      * @return
      */
-    public Set<Integer> getSupportedKits() {
-        return supportedKits.keySet();
+    fun getSupportedKits(): Set<Int> {
+        return supportedKits.keys
     }
 
-    public boolean isSupported(int kitModuleId) {
-        return supportedKits.containsKey(kitModuleId);
+    open fun isSupported(kitModuleId: Int): Boolean {
+        return supportedKits.containsKey(kitModuleId)
     }
 }
