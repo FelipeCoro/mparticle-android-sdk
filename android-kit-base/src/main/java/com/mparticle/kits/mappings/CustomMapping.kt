@@ -1,337 +1,362 @@
-package com.mparticle.kits.mappings;
+package com.mparticle.kits.mappings
 
-import com.mparticle.MPEvent;
-import com.mparticle.MParticle;
-import com.mparticle.commerce.CommerceEvent;
-import com.mparticle.commerce.Product;
-import com.mparticle.commerce.Promotion;
-import com.mparticle.kits.CommerceEventUtils;
-import com.mparticle.internal.MPUtility;
+import com.mparticle.MPEvent
+import com.mparticle.MParticle
+import com.mparticle.commerce.CommerceEvent
+import com.mparticle.commerce.Product
+import com.mparticle.commerce.Promotion
+import com.mparticle.internal.MPUtility
+import com.mparticle.kits.CommerceEventUtils.getEventType
+import com.mparticle.kits.mappings.CustomMappingMatch
+import com.mparticle.kits.mappings.CustomMapping
+import com.mparticle.kits.mappings.CustomMapping.ProjectionResult
+import com.mparticle.kits.mappings.EventWrapper.MPEventWrapper
+import com.mparticle.kits.mappings.EventWrapper.CommerceEventWrapper
+import com.mparticle.kits.CommerceEventUtils
+import com.mparticle.kits.mappings.EventWrapper
+import org.json.JSONObject
+import java.lang.NumberFormatException
+import java.util.*
+import java.util.AbstractMap
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-public class CustomMapping {
-    static final String MATCH_TYPE_STRING = "S";
-    static final String MATCH_TYPE_HASH = "H";
-    static final String MATCH_TYPE_FIELD = "F";
-    static final String MATCH_TYPE_STATIC = "Sta";
-    final int mID;
-    final int mMappingId;
-    final int mModuleMappingId;
-    final int mMaxCustomParams;
-    final boolean mAppendUnmappedAsIs;
-    final boolean mIsDefault;
-    final String mProjectedEventName;
-    final List<AttributeMap> mStaticAttributeMapList;
-    final List<AttributeMap> mRequiredAttributeMapList;
-    private final boolean isSelectorLast;
-    final int mOutboundMessageType;
-    private List<CustomMappingMatch> matchList = null;
-    public final static String PROPERTY_LOCATION_EVENT_FIELD = "EventField";
-    public final static String PROPERTY_LOCATION_EVENT_ATTRIBUTE = "EventAttribute";
-    public final static String PROPERTY_LOCATION_PRODUCT_FIELD = "ProductField";
-    public final static String PROPERTY_LOCATION_PRODUCT_ATTRIBUTE = "ProductAttribute";
-    public final static String PROPERTY_LOCATION_PROMOTION_FIELD = "PromotionField";
-
-    public List<CustomMappingMatch> getMatchList() {
-        return matchList;
+class CustomMapping(projectionJson: JSONObject) {
+    val mID: Int
+    val mMappingId: Int
+    val mModuleMappingId: Int
+    var mMaxCustomParams = 0
+    var mAppendUnmappedAsIs = false
+    var isDefault = false
+    var mProjectedEventName: String? = null
+    var mStaticAttributeMapList: MutableList<AttributeMap>? = null
+    var mRequiredAttributeMapList: MutableList<AttributeMap>? = null
+    private var isSelectorLast = false
+    var mOutboundMessageType = 0
+    private var matchList: MutableList<CustomMappingMatch>? = null
+    fun getMatchList(): List<CustomMappingMatch>? {
+        return matchList
     }
 
-    public CustomMapping(JSONObject projectionJson) throws JSONException {
-        mID = projectionJson.getInt("id");
-        mMappingId = projectionJson.optInt("pmid");
-        mModuleMappingId = projectionJson.optInt("pmmid");
-
+    init {
+        mID = projectionJson.getInt("id")
+        mMappingId = projectionJson.optInt("pmid")
+        mModuleMappingId = projectionJson.optInt("pmmid")
         if (projectionJson.has("matches")) {
-            JSONArray matchJson = projectionJson.getJSONArray("matches");
-            matchList = new ArrayList<CustomMappingMatch>(matchJson.length());
-            for (int i = 0; i < matchJson.length(); i++) {
-                CustomMappingMatch match = new CustomMappingMatch(matchJson.getJSONObject(i));
-                matchList.add(match);
+            val matchJson = projectionJson.getJSONArray("matches")
+            matchList = ArrayList(matchJson.length())
+            for (i in 0 until matchJson.length()) {
+                val match = CustomMappingMatch(matchJson.getJSONObject(i))
+                matchList.add(match)
             }
         } else {
-            matchList = new ArrayList<CustomMappingMatch>(1);
-            CustomMappingMatch match = new CustomMappingMatch(null);
-            matchList.add(match);
-
+            matchList = ArrayList(1)
+            val match = CustomMappingMatch(null)
+            matchList.add(match)
         }
         if (projectionJson.has("behavior")) {
-            JSONObject behaviors = projectionJson.getJSONObject("behavior");
-            mMaxCustomParams = behaviors.optInt("max_custom_params", Integer.MAX_VALUE);
-            mAppendUnmappedAsIs = behaviors.optBoolean("append_unmapped_as_is");
-            mIsDefault = behaviors.optBoolean("is_default");
-            isSelectorLast = behaviors.optString("selector", "foreach").equalsIgnoreCase("last");
+            val behaviors = projectionJson.getJSONObject("behavior")
+            mMaxCustomParams = behaviors.optInt("max_custom_params", Int.MAX_VALUE)
+            mAppendUnmappedAsIs = behaviors.optBoolean("append_unmapped_as_is")
+            isDefault = behaviors.optBoolean("is_default")
+            isSelectorLast =
+                behaviors.optString("selector", "foreach").equals("last", ignoreCase = true)
         } else {
-            mMaxCustomParams = Integer.MAX_VALUE;
-            mAppendUnmappedAsIs = false;
-            mIsDefault = false;
-            isSelectorLast = false;
+            mMaxCustomParams = Int.MAX_VALUE
+            mAppendUnmappedAsIs = false
+            isDefault = false
+            isSelectorLast = false
         }
-
         if (projectionJson.has("action")) {
-            JSONObject action = projectionJson.getJSONObject("action");
-            mOutboundMessageType = action.optInt("outbound_message_type", 4);
-            mProjectedEventName = action.optString("projected_event_name");
+            val action = projectionJson.getJSONObject("action")
+            mOutboundMessageType = action.optInt("outbound_message_type", 4)
+            mProjectedEventName = action.optString("projected_event_name")
             if (action.has("attribute_maps")) {
-                mRequiredAttributeMapList = new LinkedList<AttributeMap>();
-                mStaticAttributeMapList = new LinkedList<AttributeMap>();
-                JSONArray attributeMapList = action.getJSONArray("attribute_maps");
-
-                for (int i = 0; i < attributeMapList.length(); i++) {
-                    AttributeMap attProjection = new AttributeMap(attributeMapList.getJSONObject(i));
+                mRequiredAttributeMapList = LinkedList()
+                mStaticAttributeMapList = LinkedList()
+                val attributeMapList = action.getJSONArray("attribute_maps")
+                for (i in 0 until attributeMapList.length()) {
+                    val attProjection = AttributeMap(attributeMapList.getJSONObject(i))
                     if (attProjection.mMatchType.startsWith(MATCH_TYPE_STATIC)) {
-                        mStaticAttributeMapList.add(attProjection);
+                        mStaticAttributeMapList.add(attProjection)
                     } else {
-                        mRequiredAttributeMapList.add(attProjection);
+                        mRequiredAttributeMapList.add(attProjection)
                     }
                 }
-                Collections.sort(mRequiredAttributeMapList, new Comparator<AttributeMap>() {
-                    @Override
-                    public int compare(AttributeMap lhs, AttributeMap rhs) {
-                        if (lhs.mIsRequired == rhs.mIsRequired) {
-                            return 0;
-                        }else if (lhs.mIsRequired && !rhs.mIsRequired) {
-                            return -1;
-                        }else {
-                            return 1;
-                        }
+                Collections.sort(mRequiredAttributeMapList) { lhs, rhs ->
+                    if (lhs.mIsRequired == rhs.mIsRequired) {
+                        0
+                    } else if (lhs.mIsRequired && !rhs.mIsRequired) {
+                        -1
+                    } else {
+                        1
                     }
-                });
+                }
             } else {
-                mRequiredAttributeMapList = null;
-                mStaticAttributeMapList = null;
+                mRequiredAttributeMapList = null
+                mStaticAttributeMapList = null
             }
         } else {
-            mRequiredAttributeMapList = null;
-            mStaticAttributeMapList = null;
-            mProjectedEventName = null;
-            mOutboundMessageType = 4;
+            mRequiredAttributeMapList = null
+            mStaticAttributeMapList = null
+            mProjectedEventName = null
+            mOutboundMessageType = 4
         }
     }
 
-    public boolean isDefault() {
-        return mIsDefault;
-    }
-
-    private ProjectionResult projectMPEvent(MPEvent event) {
-        EventWrapper.MPEventWrapper eventWrapper = new EventWrapper.MPEventWrapper(event);
-        String eventName = MPUtility.isEmpty(mProjectedEventName) ? event.getEventName() : mProjectedEventName;
-        MPEvent.Builder builder = new MPEvent.Builder(event);
-        builder.eventName(eventName);
-        builder.customAttributes(null);
-
-        Map<String, String> newAttributes = new HashMap<String, String>();
-        Set<String> usedAttributes = new HashSet<String>();
-        if (!mapAttributes(mRequiredAttributeMapList, eventWrapper, newAttributes, usedAttributes, null, null)) {
-            return null;
+    private fun projectMPEvent(event: MPEvent): ProjectionResult? {
+        val eventWrapper = MPEventWrapper(event)
+        val eventName =
+            if (MPUtility.isEmpty(mProjectedEventName)) event.eventName else mProjectedEventName!!
+        val builder = MPEvent.Builder(event)
+        builder.eventName(eventName)
+        builder.customAttributes(null)
+        val newAttributes: MutableMap<String?, String?> = HashMap()
+        val usedAttributes: MutableSet<String?> = HashSet()
+        if (!mapAttributes(
+                mRequiredAttributeMapList,
+                eventWrapper,
+                newAttributes,
+                usedAttributes,
+                null,
+                null
+            )
+        ) {
+            return null
         }
         if (mStaticAttributeMapList != null) {
-            for (int i = 0; i < mStaticAttributeMapList.size(); i++) {
-                AttributeMap attProjection = mStaticAttributeMapList.get(i);
-                newAttributes.put(attProjection.mProjectedAttributeName, attProjection.mValue);
-                usedAttributes.add(attProjection.mValue);
+            for (i in mStaticAttributeMapList.indices) {
+                val attProjection = mStaticAttributeMapList.get(i)
+                newAttributes[attProjection.mProjectedAttributeName] = attProjection.mValue
+                usedAttributes.add(attProjection.mValue)
             }
         }
-        if (mAppendUnmappedAsIs && mMaxCustomParams > 0 && newAttributes.size() < mMaxCustomParams) {
-            Map<String, String> originalAttributes;
-            if (event.getCustomAttributeStrings() != null) {
-                originalAttributes = new HashMap<String, String>(event.getCustomAttributeStrings());
+        if (mAppendUnmappedAsIs && mMaxCustomParams > 0 && newAttributes.size < mMaxCustomParams) {
+            val originalAttributes: Map<String?, String>
+            originalAttributes = if (event.customAttributeStrings != null) {
+                HashMap(event.customAttributeStrings)
             } else {
-                originalAttributes = new HashMap<String, String>();
+                HashMap()
             }
-            List<String> sortedKeys = new ArrayList(originalAttributes.keySet());
-            Collections.sort(sortedKeys);
-            for (int i = 0; (i < sortedKeys.size() && newAttributes.size() < mMaxCustomParams); i++) {
-                String key = sortedKeys.get(i);
+            val sortedKeys: List<String?> = ArrayList<Any?>(originalAttributes.keys)
+            Collections.sort(sortedKeys)
+            var i = 0
+            while (i < sortedKeys.size && newAttributes.size < mMaxCustomParams) {
+                val key = sortedKeys[i]
                 if (!usedAttributes.contains(key) && !newAttributes.containsKey(key)) {
-                    newAttributes.put(key, originalAttributes.get(key));
+                    newAttributes[key] = originalAttributes[key]
                 }
+                i++
             }
         }
-        builder.customAttributes(newAttributes);
-        return new ProjectionResult(builder.build(), mID);
+        builder.customAttributes(newAttributes)
+        return ProjectionResult(builder.build(), mID)
     }
-    public List<ProjectionResult> project(EventWrapper.CommerceEventWrapper commerceEventWrapper) {
-        List<ProjectionResult> projectionResults = new LinkedList<ProjectionResult>();
-        CommerceEvent commerceEvent = commerceEventWrapper.getEvent();
-        int eventType = CommerceEventUtils.getEventType(commerceEvent);
+
+    fun project(commerceEventWrapper: CommerceEventWrapper): List<ProjectionResult>? {
+        val projectionResults: MutableList<ProjectionResult> = LinkedList()
+        val commerceEvent = commerceEventWrapper.event
+        val eventType = getEventType(commerceEvent)
         //TODO Impression projections are not supported for now
         if (eventType == CommerceEventUtils.Constants.EVENT_TYPE_IMPRESSION) {
-            return null;
-        }else if (eventType == CommerceEventUtils.Constants.EVENT_TYPE_PROMOTION_CLICK || eventType == CommerceEventUtils.Constants.EVENT_TYPE_PROMOTION_VIEW) {
-            List<Promotion> promotions = commerceEvent.getPromotions();
-            if (promotions == null || promotions.size() == 0){
-                ProjectionResult projectionResult = projectCommerceEvent(commerceEventWrapper, null, null);
+            return null
+        } else if (eventType == CommerceEventUtils.Constants.EVENT_TYPE_PROMOTION_CLICK || eventType == CommerceEventUtils.Constants.EVENT_TYPE_PROMOTION_VIEW) {
+            val promotions = commerceEvent.promotions
+            if (promotions == null || promotions.size == 0) {
+                val projectionResult = projectCommerceEvent(commerceEventWrapper, null, null)
                 if (projectionResult != null) {
-                    projectionResults.add(projectionResult);
+                    projectionResults.add(projectionResult)
                 }
-            }else{
+            } else {
                 if (isSelectorLast) {
-                    Promotion promotion = promotions.get(promotions.size() - 1);
-                    ProjectionResult projectionResult = projectCommerceEvent(commerceEventWrapper, null, promotion);
+                    val promotion = promotions[promotions.size - 1]
+                    val projectionResult =
+                        projectCommerceEvent(commerceEventWrapper, null, promotion)
                     if (projectionResult != null) {
-                        projectionResults.add(projectionResult);
+                        projectionResults.add(projectionResult)
                     }
-                }else{
-                    for (int i = 0; i < promotions.size(); i++) {
-                        ProjectionResult projectionResult = projectCommerceEvent(commerceEventWrapper, null, promotions.get(i));
+                } else {
+                    for (i in promotions.indices) {
+                        val projectionResult =
+                            projectCommerceEvent(commerceEventWrapper, null, promotions[i])
                         if (projectionResult != null) {
-                            if (projectionResult.getCommerceEvent() != null) {
-                                CommerceEvent foreachCommerceEvent = new CommerceEvent.Builder(projectionResult.getCommerceEvent())
-                                        .promotions(null)
-                                        .addPromotion(promotions.get(i))
-                                        .build();
-                                projectionResult.mCommerceEvent = foreachCommerceEvent;
+                            if (projectionResult.commerceEvent != null) {
+                                val foreachCommerceEvent = CommerceEvent.Builder(
+                                    projectionResult.commerceEvent!!
+                                )
+                                    .promotions(null)
+                                    .addPromotion(promotions[i])
+                                    .build()
+                                projectionResult.commerceEvent = foreachCommerceEvent
                             }
-                            projectionResults.add(projectionResult);
+                            projectionResults.add(projectionResult)
                         }
                     }
-
                 }
             }
-        }else {
-            List<Product> products = commerceEvent.getProducts();
-            if (isSelectorLast){
-                Product product = null;
-                if (products != null && products.size() > 0){
-                    product = products.get(products.size() - 1);
+        } else {
+            val products = commerceEvent.products
+            if (isSelectorLast) {
+                var product: Product? = null
+                if (products != null && products.size > 0) {
+                    product = products[products.size - 1]
                 }
-                ProjectionResult projectionResult = projectCommerceEvent(commerceEventWrapper, product, null);
+                val projectionResult = projectCommerceEvent(commerceEventWrapper, product, null)
                 if (projectionResult != null) {
-                    projectionResults.add(projectionResult);
+                    projectionResults.add(projectionResult)
                 }
-            }else {
+            } else {
                 if (products != null) {
-                    for (int i = 0; i < products.size(); i++) {
-                        ProjectionResult projectionResult = projectCommerceEvent(commerceEventWrapper, products.get(i), null);
+                    for (i in products.indices) {
+                        val projectionResult =
+                            projectCommerceEvent(commerceEventWrapper, products[i], null)
                         if (projectionResult != null) {
-                            if (projectionResult.getCommerceEvent() != null) {
-                                CommerceEvent foreachCommerceEvent = new CommerceEvent.Builder(projectionResult.getCommerceEvent())
-                                        .products(null)
-                                        .addProduct(products.get(i))
-                                        .build();
-
-                                projectionResult.mCommerceEvent = foreachCommerceEvent;
+                            if (projectionResult.commerceEvent != null) {
+                                val foreachCommerceEvent = CommerceEvent.Builder(
+                                    projectionResult.commerceEvent!!
+                                )
+                                    .products(null)
+                                    .addProduct(products[i])
+                                    .build()
+                                projectionResult.commerceEvent = foreachCommerceEvent
                             }
-                            projectionResults.add(projectionResult);
+                            projectionResults.add(projectionResult)
                         }
                     }
                 }
             }
         }
-
-
-        if (projectionResults.size() > 0) {
-            return projectionResults;
-        }else{
-            return null;
+        return if (projectionResults.size > 0) {
+            projectionResults
+        } else {
+            null
         }
     }
-    public List<ProjectionResult> project(EventWrapper.MPEventWrapper event) {
-        List<ProjectionResult> projectionResults = new LinkedList<ProjectionResult>();
 
-        ProjectionResult projectionResult = projectMPEvent(event.getEvent());
+    fun project(event: MPEventWrapper): List<ProjectionResult>? {
+        val projectionResults: MutableList<ProjectionResult> = LinkedList()
+        val projectionResult = projectMPEvent(event.event)
         if (projectionResult != null) {
-            projectionResults.add(projectionResult);
+            projectionResults.add(projectionResult)
         }
-
-        if (projectionResults.size() > 0) {
-            return projectionResults;
-        }else{
-            return null;
+        return if (projectionResults.size > 0) {
+            projectionResults
+        } else {
+            null
         }
     }
 
-    private boolean mapAttributes(List<AttributeMap> projectionList, EventWrapper eventWrapper, Map<String, String> mappedAttributes, Set<String> usedAttributes, Product product, Promotion promotion) {
+    private fun mapAttributes(
+        projectionList: List<AttributeMap>?,
+        eventWrapper: EventWrapper,
+        mappedAttributes: MutableMap<String?, String?>,
+        usedAttributes: MutableSet<String?>,
+        product: Product?,
+        promotion: Promotion?
+    ): Boolean {
         if (projectionList != null) {
-            for (int i = 0; i < projectionList.size(); i++) {
-                AttributeMap attProjection = projectionList.get(i);
-                Map.Entry<String, String> entry = null;
+            for (i in projectionList.indices) {
+                val attProjection = projectionList[i]
+                var entry: Map.Entry<String, String>? = null
                 if (attProjection.mMatchType.startsWith(MATCH_TYPE_STRING)) {
-                    entry = eventWrapper.findAttribute(attProjection.mLocation, attProjection.mValue, product, promotion);
+                    entry = eventWrapper.findAttribute(
+                        attProjection.mLocation,
+                        attProjection.mValue,
+                        product,
+                        promotion
+                    )
                 } else if (attProjection.mMatchType.startsWith(MATCH_TYPE_HASH)) {
-                    entry = eventWrapper.findAttribute(attProjection.mLocation, Integer.parseInt(attProjection.mValue), product, promotion);
-                } else if (attProjection.mMatchType.startsWith(MATCH_TYPE_FIELD) && eventWrapper.getEvent() instanceof MPEvent) {
+                    entry = eventWrapper.findAttribute(
+                        attProjection.mLocation,
+                        attProjection.mValue.toInt(),
+                        product,
+                        promotion
+                    )
+                } else if (attProjection.mMatchType.startsWith(MATCH_TYPE_FIELD) && eventWrapper.event is MPEvent) {
                     //match_type field is a special case for mapping the event name to an attribute, only supported by MPEvent
-                    entry = new AbstractMap.SimpleEntry<String, String>(attProjection.mProjectedAttributeName, ((MPEvent)eventWrapper.getEvent()).getEventName());
+                    entry = AbstractMap.SimpleEntry(
+                        attProjection.mProjectedAttributeName,
+                        (eventWrapper.event as MPEvent).eventName
+                    )
                 }
-                if (entry == null || !attProjection.matchesDataType(entry.getValue())) {
-                    if (attProjection.mIsRequired) {
-                        return false;
-                    }else {
-                        continue;
+                if (entry == null || !attProjection.matchesDataType(entry.value)) {
+                    return if (attProjection.mIsRequired) {
+                        false
+                    } else {
+                        continue
                     }
                 }
-
-                String key = entry.getKey();
+                var key = entry.key
                 if (!MPUtility.isEmpty(attProjection.mProjectedAttributeName)) {
-                    key = attProjection.mProjectedAttributeName;
+                    key = attProjection.mProjectedAttributeName
                 }
-                mappedAttributes.put(key, entry.getValue());
-                usedAttributes.add(entry.getKey());
+                mappedAttributes[key] = entry.value
+                usedAttributes.add(entry.key)
             }
         }
-        return true;
+        return true
     }
 
-    private ProjectionResult projectCommerceEvent(EventWrapper.CommerceEventWrapper eventWrapper, Product product, Promotion promotion) {
-        Map<String, String> mappedAttributes = new HashMap<String, String>();
-        Set<String> usedAttributes = new HashSet<String>();
-        if (!mapAttributes(mRequiredAttributeMapList, eventWrapper, mappedAttributes, usedAttributes, product, promotion)) {
-            return null;
+    private fun projectCommerceEvent(
+        eventWrapper: CommerceEventWrapper,
+        product: Product?,
+        promotion: Promotion?
+    ): ProjectionResult? {
+        val mappedAttributes: MutableMap<String?, String?> = HashMap()
+        val usedAttributes: MutableSet<String?> = HashSet()
+        if (!mapAttributes(
+                mRequiredAttributeMapList,
+                eventWrapper,
+                mappedAttributes,
+                usedAttributes,
+                product,
+                promotion
+            )
+        ) {
+            return null
         }
         if (mStaticAttributeMapList != null) {
-            for (int i = 0; i < mStaticAttributeMapList.size(); i++) {
-                AttributeMap attProjection = mStaticAttributeMapList.get(i);
-                mappedAttributes.put(attProjection.mProjectedAttributeName, attProjection.mValue);
-                usedAttributes.add(attProjection.mValue);
+            for (i in mStaticAttributeMapList.indices) {
+                val attProjection = mStaticAttributeMapList.get(i)
+                mappedAttributes[attProjection.mProjectedAttributeName] = attProjection.mValue
+                usedAttributes.add(attProjection.mValue)
             }
         }
-        if (mAppendUnmappedAsIs && mMaxCustomParams > 0 && mappedAttributes.size() < mMaxCustomParams) {
-            CommerceEvent event = eventWrapper.getEvent();
-            Map<String, String> originalAttributes;
-            if (event.getCustomAttributeStrings() != null) {
-                originalAttributes = new HashMap<String, String>(event.getCustomAttributeStrings());
+        if (mAppendUnmappedAsIs && mMaxCustomParams > 0 && mappedAttributes.size < mMaxCustomParams) {
+            val event = eventWrapper.event
+            val originalAttributes: Map<String?, String>
+            originalAttributes = if (event.customAttributeStrings != null) {
+                HashMap(event.customAttributeStrings)
             } else {
-                originalAttributes = new HashMap<String, String>();
+                HashMap()
             }
-            List<String> sortedKeys = new ArrayList(originalAttributes.keySet());
-            Collections.sort(sortedKeys);
-            for (int i = 0; (i < sortedKeys.size() && mappedAttributes.size() < mMaxCustomParams); i++) {
-                String key = sortedKeys.get(i);
+            val sortedKeys: List<String?> = ArrayList<Any?>(originalAttributes.keys)
+            Collections.sort(sortedKeys)
+            var i = 0
+            while (i < sortedKeys.size && mappedAttributes.size < mMaxCustomParams) {
+                val key = sortedKeys[i]
                 if (!usedAttributes.contains(key) && !mappedAttributes.containsKey(key)) {
-                    mappedAttributes.put(key, originalAttributes.get(key));
+                    mappedAttributes[key] = originalAttributes[key]
                 }
+                i++
             }
         }
-        if (mOutboundMessageType == 16){
-            return new ProjectionResult(
-                    new CommerceEvent.Builder(eventWrapper.getEvent())
-                            .internalEventName(mProjectedEventName)
-                            .customAttributes(mappedAttributes)
-                            .build(),
-                    mID
-            );
-        }else {
-            return new ProjectionResult(
-                    new MPEvent.Builder(mProjectedEventName, MParticle.EventType.Transaction)
-                            .customAttributes(mappedAttributes)
-                            .build(),
-                    mID
-            );
+        return if (mOutboundMessageType == 16) {
+            ProjectionResult(
+                CommerceEvent.Builder(eventWrapper.event)
+                    .internalEventName(mProjectedEventName)
+                    .customAttributes(mappedAttributes)
+                    .build(),
+                mID
+            )
+        } else {
+            ProjectionResult(
+                MPEvent.Builder(
+                    mProjectedEventName!!,
+                    MParticle.EventType.Transaction
+                )
+                    .customAttributes(mappedAttributes)
+                    .build(),
+                mID
+            )
         }
     }
 
@@ -340,169 +365,185 @@ public class CustomMapping {
      * and a CustomMapping is guaranteed to have at least 1 match.
      * Due to this - just return the message type of the first CustomMappingMatch.
      */
-    public int getMessageType() {
-        return matchList.get(0).mMessageType;
-    }
+    val messageType: Int
+        get() = matchList!![0].mMessageType
 
-    static class AttributeMap {
-        final String mProjectedAttributeName;
-        final String mValue;
-        final int mDataType;
-        final String mMatchType;
-        final boolean mIsRequired;
-        final String mLocation;
+    class AttributeMap(attributeMapJson: JSONObject) {
+        val mProjectedAttributeName: String
+        val mValue: String
+        val mDataType: Int
+        val mMatchType: String
+        val mIsRequired: Boolean
+        val mLocation: String
 
-        public AttributeMap(JSONObject attributeMapJson) {
-            mProjectedAttributeName = attributeMapJson.optString("projected_attribute_name");
-            mMatchType = attributeMapJson.optString("match_type", "String");
-            mValue = attributeMapJson.optString("value");
-            mDataType = attributeMapJson.optInt("data_type", 1);
-            mIsRequired = attributeMapJson.optBoolean("is_required");
-            mLocation = attributeMapJson.optString("property", PROPERTY_LOCATION_EVENT_ATTRIBUTE);
+        init {
+            mProjectedAttributeName = attributeMapJson.optString("projected_attribute_name")
+            mMatchType = attributeMapJson.optString("match_type", "String")
+            mValue = attributeMapJson.optString("value")
+            mDataType = attributeMapJson.optInt("data_type", 1)
+            mIsRequired = attributeMapJson.optBoolean("is_required")
+            mLocation = attributeMapJson.optString("property", PROPERTY_LOCATION_EVENT_ATTRIBUTE)
         }
 
-        @Override
-        public boolean equals(Object o) {
-            return super.equals(o) || this.toString().equals(o.toString());
+        override fun equals(o: Any?): Boolean {
+            return super.equals(o) || this.toString() == o.toString()
         }
 
-        @Override
-        public String toString() {
-            return "projected_attribute_name: " + mProjectedAttributeName + "\n" +
-                    "match_type: " + mMatchType + "\n" +
-                    "value: " + mValue + "\n" +
-                    "data_type: " + mDataType + "\n" +
-                    "is_required: " + mIsRequired;
+        override fun toString(): String {
+            return """
+                projected_attribute_name: $mProjectedAttributeName
+                match_type: $mMatchType
+                value: $mValue
+                data_type: $mDataType
+                is_required: $mIsRequired
+                """.trimIndent()
         }
 
-        public boolean matchesDataType(String value) {
-            switch (mDataType) {
-                case 1:
-                    return true;
-                case 2:
-                    try {
-                        Integer.parseInt(value);
-                        return true;
-                    } catch (NumberFormatException nfe) {
-                        return false;
+        fun matchesDataType(value: String): Boolean {
+            return when (mDataType) {
+                1 -> true
+                2 -> {
+                    return try {
+                        value.toInt()
+                        true
+                    } catch (nfe: NumberFormatException) {
+                        false
                     }
-                case 3:
-                    return "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
-                case 4:
-                    try {
-                        Double.parseDouble(value);
-                        return true;
-                    } catch (NumberFormatException nfe) {
-                        return false;
-                    }
-                default:
-                    return false;
-            }
-        }
-    }
-
-    public static List<CustomMapping.ProjectionResult> projectEvents(MPEvent event, List<CustomMapping> customMappingList, CustomMapping defaultCustomMapping) {
-        return projectEvents(event, false, customMappingList, defaultCustomMapping, null);
-    }
-
-    public static List<CustomMapping.ProjectionResult> projectEvents(CommerceEvent event, List<CustomMapping> customMappingList, CustomMapping defaultCommerceCustomMapping) {
-        if (CommerceEventUtils.getEventType(event) == CommerceEventUtils.Constants.EVENT_TYPE_IMPRESSION) {
-            return null;
-        }
-        List<CustomMapping.ProjectionResult> events = new LinkedList<CustomMapping.ProjectionResult>();
-        EventWrapper.CommerceEventWrapper wrapper = new EventWrapper.CommerceEventWrapper(event);
-        for (int i = 0; i < customMappingList.size(); i++) {
-            CustomMapping customMapping = customMappingList.get(i);
-            if (customMapping.isMatch(wrapper)) {
-                List<CustomMapping.ProjectionResult> results = customMapping.project(wrapper);
-                if (results != null) {
-                    events.addAll(results);
+                    "true".equals(value, ignoreCase = true) || "false".equals(
+                        value,
+                        ignoreCase = true
+                    )
                 }
+                3 -> "true".equals(value, ignoreCase = true) || "false".equals(
+                    value,
+                    ignoreCase = true
+                )
+                4 -> {
+                    return try {
+                        value.toDouble()
+                        true
+                    } catch (nfe: NumberFormatException) {
+                        false
+                    }
+                    false
+                }
+                else -> false
             }
         }
-        if (events.isEmpty()) {
-            if (defaultCommerceCustomMapping != null) {
-                events.addAll(defaultCommerceCustomMapping.project(wrapper));
-            } else {
-                return null;
-            }
-        }
-        return events;
     }
 
-    boolean isMatch(EventWrapper wrapper) {
-        if (mIsDefault) {
-            return true;
+    fun isMatch(wrapper: EventWrapper?): Boolean {
+        if (isDefault) {
+            return true
         }
-        for (CustomMappingMatch match : matchList) {
+        for (match in matchList!!) {
             if (!match.isMatch(wrapper)) {
-                return false;
+                return false
             }
         }
-        return true;
+        return true
     }
 
-    public static List<CustomMapping.ProjectionResult> projectEvents(MPEvent event, boolean isScreenEvent, List<CustomMapping> customMappingList, CustomMapping defaultCustomMapping, CustomMapping defaultScreenCustomMapping) {
-        List<CustomMapping.ProjectionResult> events = new LinkedList<CustomMapping.ProjectionResult>();
+    class ProjectionResult {
+        val mPEvent: MPEvent?
+        val projectionId: Int
+        var commerceEvent: CommerceEvent?
+            private set
 
-        EventWrapper.MPEventWrapper wrapper = new EventWrapper.MPEventWrapper(event, isScreenEvent);
-        for (int i = 0; i < customMappingList.size(); i++) {
-            CustomMapping customMapping = customMappingList.get(i);
-            if (customMapping.isMatch(wrapper)) {
-                List<CustomMapping.ProjectionResult> newEvents = customMapping.project(wrapper);
-                if (newEvents != null) {
-                    events.addAll(newEvents);
-                }
-            }
+        constructor(event: MPEvent?, projectionId: Int) {
+            mPEvent = event
+            commerceEvent = null
+            this.projectionId = projectionId
         }
 
-        if (events.isEmpty()) {
-            if (isScreenEvent) {
-                if (defaultScreenCustomMapping != null) {
-                    events.addAll(defaultScreenCustomMapping.project(wrapper));
-                } else {
-                    return null;
-                }
-            } else {
-                if (defaultCustomMapping != null) {
-                    events.addAll(defaultCustomMapping.project(wrapper));
-                } else {
-                    return null;
-                }
-            }
+        constructor(commerceEvent: CommerceEvent?, projectionId: Int) {
+            this.commerceEvent = commerceEvent
+            mPEvent = null
+            this.projectionId = projectionId
         }
-
-        return events;
     }
 
-
-    public static class ProjectionResult {
-        private final MPEvent mEvent;
-        private final int mProjectionId;
-        private CommerceEvent mCommerceEvent;
-
-        public ProjectionResult(MPEvent event, int projectionId) {
-            mEvent = event;
-            mCommerceEvent = null;
-            mProjectionId = projectionId;
+    companion object {
+        const val MATCH_TYPE_STRING = "S"
+        const val MATCH_TYPE_HASH = "H"
+        const val MATCH_TYPE_FIELD = "F"
+        const val MATCH_TYPE_STATIC = "Sta"
+        const val PROPERTY_LOCATION_EVENT_FIELD = "EventField"
+        const val PROPERTY_LOCATION_EVENT_ATTRIBUTE = "EventAttribute"
+        const val PROPERTY_LOCATION_PRODUCT_FIELD = "ProductField"
+        const val PROPERTY_LOCATION_PRODUCT_ATTRIBUTE = "ProductAttribute"
+        const val PROPERTY_LOCATION_PROMOTION_FIELD = "PromotionField"
+        fun projectEvents(
+            event: MPEvent?,
+            customMappingList: List<CustomMapping>,
+            defaultCustomMapping: CustomMapping?
+        ): List<ProjectionResult>? {
+            return projectEvents(event, false, customMappingList, defaultCustomMapping, null)
         }
 
-        public ProjectionResult(CommerceEvent commerceEvent, int projectionId) {
-            mCommerceEvent = commerceEvent;
-            mEvent = null;
-            mProjectionId = projectionId;
+        fun projectEvents(
+            event: CommerceEvent?,
+            customMappingList: List<CustomMapping>,
+            defaultCommerceCustomMapping: CustomMapping?
+        ): List<ProjectionResult>? {
+            if (getEventType(event!!) == CommerceEventUtils.Constants.EVENT_TYPE_IMPRESSION) {
+                return null
+            }
+            val events: MutableList<ProjectionResult> = LinkedList()
+            val wrapper = CommerceEventWrapper(event)
+            for (i in customMappingList.indices) {
+                val customMapping = customMappingList[i]
+                if (customMapping.isMatch(wrapper)) {
+                    val results = customMapping.project(wrapper)
+                    if (results != null) {
+                        events.addAll(results)
+                    }
+                }
+            }
+            if (events.isEmpty()) {
+                if (defaultCommerceCustomMapping != null) {
+                    events.addAll(defaultCommerceCustomMapping.project(wrapper)!!)
+                } else {
+                    return null
+                }
+            }
+            return events
         }
 
-        public int getProjectionId() {
-            return mProjectionId;
-        }
-
-        public MPEvent getMPEvent() {
-            return mEvent;
-        }
-
-        public CommerceEvent getCommerceEvent() {
-            return mCommerceEvent;
+        fun projectEvents(
+            event: MPEvent?,
+            isScreenEvent: Boolean,
+            customMappingList: List<CustomMapping>,
+            defaultCustomMapping: CustomMapping?,
+            defaultScreenCustomMapping: CustomMapping?
+        ): List<ProjectionResult>? {
+            val events: MutableList<ProjectionResult> = LinkedList()
+            val wrapper = MPEventWrapper(event, isScreenEvent)
+            for (i in customMappingList.indices) {
+                val customMapping = customMappingList[i]
+                if (customMapping.isMatch(wrapper)) {
+                    val newEvents = customMapping.project(wrapper)
+                    if (newEvents != null) {
+                        events.addAll(newEvents)
+                    }
+                }
+            }
+            if (events.isEmpty()) {
+                if (isScreenEvent) {
+                    if (defaultScreenCustomMapping != null) {
+                        events.addAll(defaultScreenCustomMapping.project(wrapper)!!)
+                    } else {
+                        return null
+                    }
+                } else {
+                    if (defaultCustomMapping != null) {
+                        events.addAll(defaultCustomMapping.project(wrapper)!!)
+                    } else {
+                        return null
+                    }
+                }
+            }
+            return events
         }
     }
 }

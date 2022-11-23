@@ -194,10 +194,10 @@ class ReportingMessage(
             }
 
             fun fromProjectionResult(result: ProjectionResult): ProjectionReport {
-                return if (result.mpEvent != null) {
-                    fromEvent(result.projectionId, result.mpEvent)
+                return if (result.mPEvent  != null) {
+                    fromEvent(result.projectionId, result.mPEvent)
                 } else {
-                    fromEvent(result.projectionId, result.commerceEvent)
+                    fromEvent(result.projectionId, result.commerceEvent!!)
                 }
             }
         }

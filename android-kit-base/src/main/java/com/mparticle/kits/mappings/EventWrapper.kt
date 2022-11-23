@@ -1,279 +1,345 @@
-package com.mparticle.kits.mappings;
+package com.mparticle.kits.mappings
 
-import com.mparticle.MPEvent;
-import com.mparticle.commerce.CommerceEvent;
-import com.mparticle.commerce.Product;
-import com.mparticle.commerce.Promotion;
-import com.mparticle.kits.CommerceEventUtils;
-import com.mparticle.kits.KitUtils;
-
-import java.util.AbstractMap;
-import java.util.HashMap;
-import java.util.Map;
+import com.mparticle.MPEvent
+import com.mparticle.commerce.CommerceEvent
+import com.mparticle.commerce.Product
+import com.mparticle.commerce.Promotion
+import com.mparticle.kits.KitUtils.hashForFiltering
+import com.mparticle.kits.CommerceEventUtils.getEventType
+import com.mparticle.kits.CommerceEventUtils.extractActionAttributes
+import com.mparticle.kits.CommerceEventUtils.extractTransactionAttributes
+import com.mparticle.kits.CommerceEventUtils.extractProductAttributes
+import com.mparticle.kits.CommerceEventUtils.extractProductFields
+import com.mparticle.kits.CommerceEventUtils.extractPromotionAttributes
+import com.mparticle.kits.mappings.EventWrapper
+import com.mparticle.kits.KitUtils
+import com.mparticle.kits.CommerceEventUtils
+import com.mparticle.kits.mappings.CustomMapping
+import java.util.AbstractMap
+import java.util.HashMap
 
 /**
  * Decorator classes for MPEvent and CommerceEvent. Used to extend functionality and to cache values for Projection processing.
  */
-abstract class EventWrapper {
-    public abstract Map<Integer, String> getAttributeHashes();
+internal abstract class EventWrapper {
+    abstract fun getAttributeHashes(): Map<Int, String>
+    protected var attributeHashes: MutableMap<Int, String>? = null
+    abstract val eventTypeOrdinal: Int
+    abstract val event: Any
+    abstract val messageType: Int
+    abstract val eventHash: Int
+    abstract fun findAttribute(
+        propertyType: String?,
+        hash: Int,
+        product: Product?,
+        promotion: Promotion?
+    ): Map.Entry<String, String?>?
 
-    protected Map<Integer, String> attributeHashes;
+    abstract fun findAttribute(
+        propertyType: String?,
+        keyName: String,
+        product: Product?,
+        promotion: Promotion?
+    ): Map.Entry<String, String?>?
 
-    public abstract int getEventTypeOrdinal();
-
-    public abstract Object getEvent();
-
-    public abstract int getMessageType();
-
-    public abstract int getEventHash();
-
-    protected static Map<Integer, String> getHashes(String hashPrefix, Map<String, String> map) {
-        Map<Integer, String> hashedMap = new HashMap<Integer, String>();
-        for (Map.Entry<String, String> entry : map.entrySet()) {
-            int hash = KitUtils.hashForFiltering(hashPrefix + entry.getKey());
-            hashedMap.put(hash, entry.getKey());
-        }
-        return hashedMap;
-    }
-
-    public abstract Map.Entry<String, String> findAttribute(String propertyType, int hash, Product product, Promotion promotion);
-
-    public abstract Map.Entry<String, String> findAttribute(String propertyType, String keyName, Product product, Promotion promotion);
-
-    static class CommerceEventWrapper extends EventWrapper {
-        private CommerceEvent mCommerceEvent;
-        private Map<Integer, String> eventFieldHashes;
-        private HashMap<String, String> eventFieldAttributes;
-
-        public CommerceEventWrapper(CommerceEvent event) {
-            this.mCommerceEvent = event;
-        }
-
-        @Override
-        public Map<Integer, String> getAttributeHashes() {
+    internal class CommerceEventWrapper(private var mCommerceEvent: CommerceEvent) :
+        EventWrapper() {
+        private var eventFieldHashes: Map<Int, String>? = null
+        private var eventFieldAttributes: HashMap<String, String>? = null
+        override fun getAttributeHashes(): Map<Int, String> {
             if (attributeHashes == null) {
-                attributeHashes = new HashMap<Integer, String>();
-                if (mCommerceEvent.getCustomAttributeStrings() != null) {
-                    for (Map.Entry<String, String> entry : mCommerceEvent.getCustomAttributeStrings().entrySet()) {
-                        int hash = KitUtils.hashForFiltering(getEventTypeOrdinal() + entry.getKey());
-                        attributeHashes.put(hash, entry.getKey());
+                attributeHashes = HashMap()
+                if (mCommerceEvent.customAttributeStrings != null) {
+                    for ((key) in mCommerceEvent.customAttributeStrings!!) {
+                        val hash = hashForFiltering(getEventTypeOrdinal().toString() + key)
+                        attributeHashes[hash] = key
                     }
                 }
             }
-            return attributeHashes;
+            return attributeHashes!!
         }
 
-        public int getEventTypeOrdinal() {
-            return CommerceEventUtils.getEventType(mCommerceEvent);
+        override fun getEventTypeOrdinal(): Int {
+            return getEventType(mCommerceEvent)
         }
 
-        public CommerceEvent getEvent() {
-            return mCommerceEvent;
+        override fun getEvent(): CommerceEvent {
+            return mCommerceEvent
         }
 
-        public void setEvent(CommerceEvent event) {
-            mCommerceEvent = event;
+        fun setEvent(event: CommerceEvent) {
+            mCommerceEvent = event
         }
 
-        public int getMessageType() {
-            return 16;
+        override fun getMessageType(): Int {
+            return 16
         }
 
-        public int getEventHash() {
-            return KitUtils.hashForFiltering("" + getEventTypeOrdinal());
+        override fun getEventHash(): Int {
+            return hashForFiltering("" + getEventTypeOrdinal())
         }
 
-        public Map.Entry<String, String> findAttribute(String propertyType, int hash, Product product, Promotion promotion) {
-            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equalsIgnoreCase(propertyType)) {
-                if (getEvent().getCustomAttributeStrings() == null || getEvent().getCustomAttributeStrings().size() == 0) {
-                    return null;
+        override fun findAttribute(
+            propertyType: String?,
+            hash: Int,
+            product: Product?,
+            promotion: Promotion?
+        ): Map.Entry<String, String?>? {
+            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
+                if (getEvent().customAttributeStrings == null || getEvent().customAttributeStrings!!.size == 0) {
+                    return null
                 }
-                String key = getAttributeHashes().get(hash);
+                val key = getAttributeHashes()[hash]
                 if (key != null) {
-                    return new AbstractMap.SimpleEntry<String, String>(key, mCommerceEvent.getCustomAttributeStrings().get(key));
+                    return AbstractMap.SimpleEntry(
+                        key,
+                        mCommerceEvent.customAttributeStrings!![key]
+                    )
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_EVENT_FIELD.equalsIgnoreCase(propertyType)) {
+            } else if (CustomMapping.PROPERTY_LOCATION_EVENT_FIELD.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
                 if (eventFieldHashes == null) {
                     if (eventFieldAttributes == null) {
-                        eventFieldAttributes = new HashMap<String, String>();
-                        CommerceEventUtils.extractActionAttributes(getEvent(), eventFieldAttributes);
-                        CommerceEventUtils.extractTransactionAttributes(getEvent(), eventFieldAttributes);
+                        eventFieldAttributes = HashMap()
+                        extractActionAttributes(getEvent(), eventFieldAttributes)
+                        extractTransactionAttributes(getEvent(), eventFieldAttributes)
                     }
-                    eventFieldHashes = getHashes(getEventTypeOrdinal() + "", eventFieldAttributes);
+                    eventFieldHashes =
+                        getHashes(getEventTypeOrdinal().toString() + "", eventFieldAttributes!!)
                 }
-                String key = eventFieldHashes.get(hash);
+                val key = eventFieldHashes!![hash]
                 if (key != null) {
-                    return new AbstractMap.SimpleEntry<String, String>(key, eventFieldAttributes.get(key));
+                    return AbstractMap.SimpleEntry(key, eventFieldAttributes!![key])
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_ATTRIBUTE.equalsIgnoreCase(propertyType)) {
-                if (product == null || product.getCustomAttributes() == null || product.getCustomAttributes().size() == 0) {
-                    return null;
+            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_ATTRIBUTE.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
+                if (product == null || product.customAttributes == null || product.customAttributes!!.size == 0) {
+                    return null
                 }
-                Map<String, String> attributes = new HashMap<String, String>();
-                CommerceEventUtils.extractProductAttributes(product, attributes);
-                Map<Integer, String> hashes = getHashes(getEventTypeOrdinal() + "", attributes);
-                String key = hashes.get(hash);
+                val attributes: Map<String, String> = HashMap()
+                extractProductAttributes(product, attributes)
+                val hashes = getHashes(getEventTypeOrdinal().toString() + "", attributes)
+                val key = hashes[hash]
                 if (key != null) {
-                    return new AbstractMap.SimpleEntry<String, String>(key, attributes.get(key));
+                    return AbstractMap.SimpleEntry(key, attributes[key])
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_FIELD.equalsIgnoreCase(propertyType)) {
+            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_FIELD.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
                 if (product == null) {
-                    return null;
+                    return null
                 }
-                Map<String, String> attributes = new HashMap<String, String>();
-                CommerceEventUtils.extractProductFields(product, attributes);
-                Map<Integer, String> hashes = getHashes(getEventTypeOrdinal() + "", attributes);
-                String key = hashes.get(hash);
+                val attributes: Map<String, String> = HashMap()
+                extractProductFields(product, attributes)
+                val hashes = getHashes(getEventTypeOrdinal().toString() + "", attributes)
+                val key = hashes[hash]
                 if (key != null) {
-                    return new AbstractMap.SimpleEntry<String, String>(key, attributes.get(key));
+                    return AbstractMap.SimpleEntry(key, attributes[key])
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_PROMOTION_FIELD.equalsIgnoreCase(propertyType)) {
+            } else if (CustomMapping.PROPERTY_LOCATION_PROMOTION_FIELD.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
                 if (promotion == null) {
-                    return null;
+                    return null
                 }
-                Map<String, String> attributes = new HashMap<String, String>();
-                CommerceEventUtils.extractPromotionAttributes(promotion, attributes);
-                Map<Integer, String> hashes = getHashes(getEventTypeOrdinal() + "", attributes);
-                String key = hashes.get(hash);
+                val attributes: Map<String, String> = HashMap()
+                extractPromotionAttributes(promotion, attributes)
+                val hashes = getHashes(getEventTypeOrdinal().toString() + "", attributes)
+                val key = hashes[hash]
                 if (key != null) {
-                    return new AbstractMap.SimpleEntry<String, String>(key, attributes.get(key));
+                    return AbstractMap.SimpleEntry(key, attributes[key])
                 }
             }
-            return null;
+            return null
         }
 
-        @Override
-        public Map.Entry<String, String> findAttribute(String propertyType, String keyName, Product product, Promotion promotion) {
-            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equalsIgnoreCase(propertyType)) {
-                if (getEvent().getCustomAttributeStrings() == null || getEvent().getCustomAttributeStrings().size() == 0) {
-                    return null;
+        override fun findAttribute(
+            propertyType: String?,
+            keyName: String,
+            product: Product?,
+            promotion: Promotion?
+        ): Map.Entry<String, String?>? {
+            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
+                if (getEvent().customAttributeStrings == null || getEvent().customAttributeStrings!!.size == 0) {
+                    return null
                 }
-                if (getEvent().getCustomAttributeStrings().containsKey(keyName)) {
-                    return new AbstractMap.SimpleEntry<String, String>(keyName, getEvent().getCustomAttributeStrings().get(keyName));
+                if (getEvent().customAttributeStrings!!.containsKey(keyName)) {
+                    return AbstractMap.SimpleEntry(
+                        keyName,
+                        getEvent().customAttributeStrings!![keyName]
+                    )
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_EVENT_FIELD.equalsIgnoreCase(propertyType)) {
+            } else if (CustomMapping.PROPERTY_LOCATION_EVENT_FIELD.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
                 if (eventFieldAttributes == null) {
-                    eventFieldAttributes = new HashMap<String, String>();
-                    CommerceEventUtils.extractActionAttributes(getEvent(), eventFieldAttributes);
-                    CommerceEventUtils.extractTransactionAttributes(getEvent(), eventFieldAttributes);
+                    eventFieldAttributes = HashMap()
+                    extractActionAttributes(getEvent(), eventFieldAttributes)
+                    extractTransactionAttributes(getEvent(), eventFieldAttributes)
                 }
-                if (eventFieldAttributes.containsKey(keyName)) {
-                    return new AbstractMap.SimpleEntry<String, String>(keyName, eventFieldAttributes.get(keyName));
+                if (eventFieldAttributes!!.containsKey(keyName)) {
+                    return AbstractMap.SimpleEntry(keyName, eventFieldAttributes!![keyName])
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_ATTRIBUTE.equalsIgnoreCase(propertyType)) {
-                if (product == null || product.getCustomAttributes() == null) {
-                    return null;
+            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_ATTRIBUTE.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
+                if (product == null || product.customAttributes == null) {
+                    return null
                 }
-                Map<String, String> attributes = new HashMap<String, String>();
-                CommerceEventUtils.extractProductAttributes(product, attributes);
-
+                val attributes: Map<String, String> = HashMap()
+                extractProductAttributes(product, attributes)
                 if (attributes.containsKey(keyName)) {
-                    return new AbstractMap.SimpleEntry<String, String>(keyName, attributes.get(keyName));
+                    return AbstractMap.SimpleEntry(keyName, attributes[keyName])
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_FIELD.equalsIgnoreCase(propertyType)) {
+            } else if (CustomMapping.PROPERTY_LOCATION_PRODUCT_FIELD.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
                 if (product == null) {
-                    return null;
+                    return null
                 }
-                Map<String, String> attributes = new HashMap<String, String>();
-                CommerceEventUtils.extractProductFields(product, attributes);
-
+                val attributes: Map<String, String> = HashMap()
+                extractProductFields(product, attributes)
                 if (attributes.containsKey(keyName)) {
-                    return new AbstractMap.SimpleEntry<String, String>(keyName, attributes.get(keyName));
+                    return AbstractMap.SimpleEntry(keyName, attributes[keyName])
                 }
-            } else if (CustomMapping.PROPERTY_LOCATION_PROMOTION_FIELD.equalsIgnoreCase(propertyType)) {
+            } else if (CustomMapping.PROPERTY_LOCATION_PROMOTION_FIELD.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
                 if (promotion == null) {
-                    return null;
+                    return null
                 }
-                Map<String, String> attributes = new HashMap<String, String>();
-                CommerceEventUtils.extractPromotionAttributes(promotion, attributes);
+                val attributes: Map<String, String> = HashMap()
+                extractPromotionAttributes(promotion, attributes)
                 if (attributes.containsKey(keyName)) {
-                    return new AbstractMap.SimpleEntry<String, String>(keyName, attributes.get(keyName));
+                    return AbstractMap.SimpleEntry(keyName, attributes[keyName])
                 }
             }
-            return null;
+            return null
         }
     }
 
-    static class MPEventWrapper extends EventWrapper {
-        private final MPEvent mEvent;
-        private boolean mScreenEvent;
-
-        public MPEventWrapper(MPEvent event) {
-            this(event, false);
-        }
-
-        public MPEventWrapper(MPEvent event, boolean isScreenEvent) {
-            this.mEvent = event;
-            this.mScreenEvent = isScreenEvent;
-        }
-
-        public Map<Integer, String> getAttributeHashes() {
+    internal class MPEventWrapper @JvmOverloads constructor(
+        private val mEvent: MPEvent,
+        private val mScreenEvent: Boolean = false
+    ) : EventWrapper() {
+        override fun getAttributeHashes(): Map<Int, String> {
             if (attributeHashes == null) {
-                attributeHashes = new HashMap<Integer, String>();
-                if (mEvent.getCustomAttributeStrings() != null) {
-                    for (Map.Entry<String, String> entry : mEvent.getCustomAttributeStrings().entrySet()) {
-                        int hash = KitUtils.hashForFiltering(getEventTypeOrdinal() + mEvent.getEventName() + entry.getKey());
-                        attributeHashes.put(hash, entry.getKey());
+                attributeHashes = HashMap()
+                if (mEvent.customAttributeStrings != null) {
+                    for ((key) in mEvent.customAttributeStrings!!) {
+                        val hash =
+                            hashForFiltering(getEventTypeOrdinal().toString() + mEvent.eventName + key)
+                        attributeHashes[hash] = key
                     }
                 }
-
             }
-            return attributeHashes;
+            return attributeHashes!!
         }
 
-        public MPEvent getEvent() {
-            return mEvent;
+        override fun getEvent(): MPEvent {
+            return mEvent
         }
 
-        public int getEventTypeOrdinal() {
-            if (mScreenEvent) {
-                return 0;
+        override fun getEventTypeOrdinal(): Int {
+            return if (mScreenEvent) {
+                0
             } else {
-                return mEvent.getEventType().ordinal();
+                mEvent.eventType.ordinal
             }
         }
 
-        public int getEventHash() {
-            if (mScreenEvent) {
-                return KitUtils.hashForFiltering(getEventTypeOrdinal() + mEvent.getEventName());
+        override fun getEventHash(): Int {
+            return if (mScreenEvent) {
+                hashForFiltering(getEventTypeOrdinal().toString() + mEvent.eventName)
             } else {
-                return mEvent.getEventHash();
+                mEvent.eventHash
             }
         }
 
-        public int getMessageType() {
-            if (mScreenEvent) {
-                return 3;
+        override fun getMessageType(): Int {
+            return if (mScreenEvent) {
+                3
             } else {
-                return 4;
+                4
             }
         }
 
-        public Map.Entry<String, String> findAttribute(String propertyType, String keyName, Product product, Promotion promotion) {
-            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equalsIgnoreCase(propertyType)) {
-                if (getEvent().getCustomAttributeStrings() == null) {
-                    return null;
+        override fun findAttribute(
+            propertyType: String?,
+            keyName: String,
+            product: Product?,
+            promotion: Promotion?
+        ): Map.Entry<String, String?>? {
+            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
+                if (getEvent().customAttributeStrings == null) {
+                    return null
                 }
-                String value = getEvent().getCustomAttributeStrings().get(keyName);
+                val value = getEvent().customAttributeStrings!![keyName]
                 if (value != null) {
-                    return new AbstractMap.SimpleEntry<String, String>(keyName, value);
+                    return AbstractMap.SimpleEntry(keyName, value)
                 }
             }
-            return null;
+            return null
         }
 
-        public Map.Entry<String, String> findAttribute(String propertyType, int hash, Product product, Promotion promotion) {
-            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equalsIgnoreCase(propertyType)) {
-                String key = getAttributeHashes().get(hash);
+        override fun findAttribute(
+            propertyType: String?,
+            hash: Int,
+            product: Product?,
+            promotion: Promotion?
+        ): Map.Entry<String, String?>? {
+            if (CustomMapping.PROPERTY_LOCATION_EVENT_ATTRIBUTE.equals(
+                    propertyType,
+                    ignoreCase = true
+                )
+            ) {
+                val key = getAttributeHashes()[hash]
                 if (key != null) {
-                    return new AbstractMap.SimpleEntry<>(key, mEvent.getCustomAttributeStrings().get(key));
+                    return AbstractMap.SimpleEntry(key, mEvent.customAttributeStrings!![key])
                 }
             }
-            return null;
+            return null
         }
+    }
 
+    companion object {
+        protected fun getHashes(hashPrefix: String, map: Map<String, String>): Map<Int, String> {
+            val hashedMap: MutableMap<Int, String> = HashMap()
+            for ((key) in map) {
+                val hash = hashForFiltering(hashPrefix + key)
+                hashedMap[hash] = key
+            }
+            return hashedMap
+        }
     }
 }
-
-
-

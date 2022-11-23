@@ -859,7 +859,7 @@ public final class CommerceEvent extends BaseEvent {
          * @return returns this Builder for easy method chaining.
          */
         @NonNull
-        public Builder promotions(@NonNull List<Promotion> promotions) {
+        public Builder promotions(List<Promotion> promotions) {
             promotionList = promotions;
             return this;
         }

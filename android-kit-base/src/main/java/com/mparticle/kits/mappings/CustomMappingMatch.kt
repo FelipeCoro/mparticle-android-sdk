@@ -1,94 +1,78 @@
-package com.mparticle.kits.mappings;
+package com.mparticle.kits.mappings
 
-import com.mparticle.MPEvent;
-import com.mparticle.commerce.CommerceEvent;
-import com.mparticle.commerce.Product;
-import com.mparticle.commerce.Promotion;
-import com.mparticle.kits.CommerceEventUtils;
-import com.mparticle.kits.KitUtils;
+import com.mparticle.commerce.CommerceEvent
+import com.mparticle.commerce.Product
+import com.mparticle.commerce.Promotion
+import com.mparticle.kits.CommerceEventUtils.extractActionAttributes
+import com.mparticle.kits.CommerceEventUtils.extractProductFields
+import com.mparticle.kits.CommerceEventUtils.extractPromotionAttributes
+import com.mparticle.kits.CommerceEventUtils.getEventType
+import com.mparticle.kits.KitUtils.hashForFiltering
+import com.mparticle.kits.mappings.EventWrapper.CommerceEventWrapper
+import com.mparticle.kits.mappings.EventWrapper.MPEventWrapper
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import java.util.*
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+class CustomMappingMatch(match: JSONObject?) {
+    var mMessageType = -1
+    var mMatchType = "String"
+    var commerceMatchProperty: String? = null
+    var commerceMatchPropertyName: String? = null
+    var commerceMatchPropertyValues: MutableSet<String>? = null
+    var mEventHash = 0
+    var mEventName: String? = null
+    var mAttributeKey: String? = null
+    var mAttributeValues: MutableSet<String>? = null
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-
-final class CustomMappingMatch {
-
-    static final String MATCH_TYPE_STRING = "S";
-    static final String MATCH_TYPE_HASH = "H";
-    public final static String PROPERTY_LOCATION_EVENT_FIELD = "EventField";
-    public final static String PROPERTY_LOCATION_EVENT_ATTRIBUTE = "EventAttribute";
-    public final static String PROPERTY_LOCATION_PRODUCT_FIELD = "ProductField";
-    public final static String PROPERTY_LOCATION_PRODUCT_ATTRIBUTE = "ProductAttribute";
-    public final static String PROPERTY_LOCATION_PROMOTION_FIELD = "PromotionField";
-
-    int mMessageType = -1;
-    String mMatchType = "String";
-    String commerceMatchProperty = null;
-    String commerceMatchPropertyName = null;
-    Set<String> commerceMatchPropertyValues = null;
-    int mEventHash;
-    String mEventName = null;
-    String mAttributeKey = null;
-    Set<String> mAttributeValues = null;
-
-    public CustomMappingMatch(JSONObject match) {
+    init {
         if (match == null) {
-            mEventHash = 0;
-            mMessageType = -1;
-            mMatchType = "String";
-            mEventName = null;
-            mAttributeKey = null;
-            mAttributeValues = null;
+            mEventHash = 0
+            mMessageType = -1
+            mMatchType = "String"
+            mEventName = null
+            mAttributeKey = null
+            mAttributeValues = null
         } else {
-            mMessageType = match.optInt("message_type");
-            mMatchType = match.optString("event_match_type", "String");
-            commerceMatchProperty = match.optString("property", PROPERTY_LOCATION_EVENT_ATTRIBUTE);
-            commerceMatchPropertyName = match.optString("property_name", null);
+            mMessageType = match.optInt("message_type")
+            mMatchType = match.optString("event_match_type", "String")
+            commerceMatchProperty = match.optString("property", PROPERTY_LOCATION_EVENT_ATTRIBUTE)
+            commerceMatchPropertyName = match.optString("property_name", null)
             if (match.has("property_values")) {
                 try {
-                    JSONArray propertyValues = match.getJSONArray("property_values");
-                    commerceMatchPropertyValues = new HashSet<String>(propertyValues.length());
-                    for (int i = 0; i < propertyValues.length(); i++) {
-                        commerceMatchPropertyValues.add(propertyValues.optString(i).toLowerCase(Locale.US));
+                    val propertyValues = match.getJSONArray("property_values")
+                    commerceMatchPropertyValues = HashSet(propertyValues.length())
+                    for (i in 0 until propertyValues.length()) {
+                        commerceMatchPropertyValues.add(propertyValues.optString(i).lowercase())
                     }
-                } catch (JSONException jse) {
-
+                } catch (jse: JSONException) {
                 }
             }
             if (mMatchType.startsWith(MATCH_TYPE_HASH)) {
-                mEventHash = Integer.parseInt(match.optString("event"));
-                mAttributeKey = null;
-                mAttributeValues = null;
-                mEventName = null;
+                mEventHash = match.optString("event").toInt()
+                mAttributeKey = null
+                mAttributeValues = null
+                mEventName = null
             } else {
-                mEventHash = 0;
-                mEventName = match.optString("event");
-                mAttributeKey = match.optString("attribute_key");
+                mEventHash = 0
+                mEventName = match.optString("event")
+                mAttributeKey = match.optString("attribute_key")
                 try {
-                    if (match.has("attribute_values") && match.get("attribute_values") instanceof JSONArray) {
-                        JSONArray values = match.getJSONArray("attribute_values");
-                        mAttributeValues = new HashSet<String>(values.length());
-                        for (int i = 0; i < values.length(); i++) {
-                            mAttributeValues.add(values.optString(i).toLowerCase(Locale.US));
+                    if (match.has("attribute_values") && match["attribute_values"] is JSONArray) {
+                        val values = match.getJSONArray("attribute_values")
+                        mAttributeValues = HashSet(values.length())
+                        for (i in 0 until values.length()) {
+                            mAttributeValues.add(values.optString(i).lowercase())
                         }
                     } else if (match.has("attribute_values")) {
-                        mAttributeValues = new HashSet<String>(1);
-                        mAttributeValues.add(match.optString("attribute_values").toLowerCase(Locale.US));
+                        mAttributeValues = HashSet(1)
+                        mAttributeValues.add(match.optString("attribute_values").lowercase())
                     } else {
-                        mAttributeValues = new HashSet<String>(1);
-                        mAttributeValues.add(match.optString("attribute_value").toLowerCase(Locale.US));
+                        mAttributeValues = HashSet(1)
+                        mAttributeValues.add(match.optString("attribute_value").lowercase())
                     }
-
-                } catch (JSONException jse) {
-
+                } catch (jse: JSONException) {
                 }
             }
         }
@@ -97,196 +81,218 @@ final class CustomMappingMatch {
     /**
      * This is an optimization - check the basic stuff to see if we have a match before actually trying to do the projection.
      */
-    public boolean isMatch(EventWrapper eventWrapper) {
-        if (eventWrapper.getMessageType() != mMessageType) {
-            return false;
+    fun isMatch(eventWrapper: EventWrapper): Boolean {
+        if (eventWrapper.messageType != mMessageType) {
+            return false
         }
-        if (eventWrapper instanceof EventWrapper.MPEventWrapper) {
-            if (matchAppEvent((EventWrapper.MPEventWrapper) eventWrapper)) {
-                return true;
+        if (eventWrapper is MPEventWrapper) {
+            if (matchAppEvent(eventWrapper)) {
+                return true
             }
         } else {
-            CommerceEvent commerceEvent = matchCommerceEvent((EventWrapper.CommerceEventWrapper) eventWrapper);
+            val commerceEvent = matchCommerceEvent(eventWrapper as CommerceEventWrapper)
             if (commerceEvent != null) {
-                ((EventWrapper.CommerceEventWrapper) eventWrapper).setEvent(commerceEvent);
-                return true;
+                eventWrapper.event = commerceEvent
+                return true
             }
         }
-        return false;
+        return false
     }
 
-    private boolean matchAppEvent(EventWrapper.MPEventWrapper eventWrapper) {
-        MPEvent event = eventWrapper.getEvent();
-        if (event == null) {
-            return false;
-        }
-        if (mMatchType.startsWith(MATCH_TYPE_HASH) && eventWrapper.getEventHash() == mEventHash) {
-            return true;
+    private fun matchAppEvent(eventWrapper: MPEventWrapper): Boolean {
+        val event = eventWrapper.event ?: return false
+        return if (mMatchType.startsWith(MATCH_TYPE_HASH) && eventWrapper.eventHash == mEventHash) {
+            true
         } else if (mMatchType.startsWith(MATCH_TYPE_STRING) &&
-                event.getEventName().equalsIgnoreCase(mEventName) &&
-                event.getCustomAttributeStrings() != null &&
-                event.getCustomAttributeStrings().containsKey(mAttributeKey) &&
-                getAttributeValues().contains(event.getCustomAttributeStrings().get(mAttributeKey).toLowerCase(Locale.US))) {
-            return true;
+            event.eventName.equals(
+                mEventName,
+                ignoreCase = true
+            ) && event.customAttributeStrings != null &&
+            event.customAttributeStrings!!.containsKey(mAttributeKey) &&
+            attributeValues!!.contains(
+                event.customAttributeStrings!![mAttributeKey]!!.lowercase()
+            )
+        ) {
+            true
         } else {
-            return false;
+            false
         }
     }
 
-    private CommerceEvent matchCommerceEvent(EventWrapper.CommerceEventWrapper eventWrapper) {
-        CommerceEvent commerceEvent = eventWrapper.getEvent();
-        if (commerceEvent == null) {
-            return null;
-        }
+    private fun matchCommerceEvent(eventWrapper: CommerceEventWrapper): CommerceEvent? {
+        val commerceEvent = eventWrapper.event ?: return null
         if (commerceMatchProperty != null && commerceMatchPropertyName != null) {
-            if (commerceMatchProperty.equalsIgnoreCase(PROPERTY_LOCATION_EVENT_FIELD)) {
-                if (matchCommerceFields(commerceEvent)) {
-                    return commerceEvent;
+            if (commerceMatchProperty.equals(PROPERTY_LOCATION_EVENT_FIELD, ignoreCase = true)) {
+                return if (matchCommerceFields(commerceEvent)) {
+                    commerceEvent
                 } else {
-                    return null;
+                    null
                 }
-            } else if (commerceMatchProperty.equalsIgnoreCase(PROPERTY_LOCATION_EVENT_ATTRIBUTE)) {
-                if (matchCommerceAttributes(commerceEvent)) {
-                    return commerceEvent;
+            } else if (commerceMatchProperty.equals(
+                    PROPERTY_LOCATION_EVENT_ATTRIBUTE,
+                    ignoreCase = true
+                )
+            ) {
+                return if (matchCommerceAttributes(commerceEvent)) {
+                    commerceEvent
                 } else {
-                    return null;
+                    null
                 }
-            } else if (commerceMatchProperty.equalsIgnoreCase(PROPERTY_LOCATION_PRODUCT_FIELD)) {
-                return matchProductFields(commerceEvent);
-            } else if (commerceMatchProperty.equalsIgnoreCase(PROPERTY_LOCATION_PRODUCT_ATTRIBUTE)) {
-                return matchProductAttributes(commerceEvent);
-            } else if (commerceMatchProperty.equalsIgnoreCase(PROPERTY_LOCATION_PROMOTION_FIELD)) {
-                return matchPromotionFields(commerceEvent);
+            } else if (commerceMatchProperty.equals(
+                    PROPERTY_LOCATION_PRODUCT_FIELD,
+                    ignoreCase = true
+                )
+            ) {
+                return matchProductFields(commerceEvent)
+            } else if (commerceMatchProperty.equals(
+                    PROPERTY_LOCATION_PRODUCT_ATTRIBUTE,
+                    ignoreCase = true
+                )
+            ) {
+                return matchProductAttributes(commerceEvent)
+            } else if (commerceMatchProperty.equals(
+                    PROPERTY_LOCATION_PROMOTION_FIELD,
+                    ignoreCase = true
+                )
+            ) {
+                return matchPromotionFields(commerceEvent)
             }
         }
-        if (mMatchType.startsWith(MATCH_TYPE_HASH) && eventWrapper.getEventHash() == mEventHash) {
-            return commerceEvent;
-        }
-        return null;
+        return if (mMatchType.startsWith(MATCH_TYPE_HASH) && eventWrapper.eventHash == mEventHash) {
+            commerceEvent
+        } else null
     }
 
-    private CommerceEvent matchPromotionFields(CommerceEvent event) {
-        int hash = Integer.parseInt(commerceMatchPropertyName);
-        List<Promotion> promotionList = event.getPromotions();
-        if (promotionList == null || promotionList.size() == 0) {
-            return null;
+    private fun matchPromotionFields(event: CommerceEvent): CommerceEvent? {
+        val hash = commerceMatchPropertyName!!.toInt()
+        val promotionList = event.promotions
+        if (promotionList == null || promotionList.size == 0) {
+            return null
         }
-        List<Promotion> matchedPromotions = new LinkedList<Promotion>();
-        Map<String, String> promotionFields = new HashMap<String, String>();
-        for (Promotion promotion : promotionList) {
-            promotionFields.clear();
-            CommerceEventUtils.extractPromotionAttributes(promotion, promotionFields);
+        val matchedPromotions: MutableList<Promotion> = LinkedList()
+        val promotionFields: MutableMap<String, String> = HashMap()
+        for (promotion in promotionList) {
+            promotionFields.clear()
+            extractPromotionAttributes(promotion, promotionFields)
             if (promotionFields != null) {
-                for (Map.Entry<String, String> entry : promotionFields.entrySet()) {
-                    int attributeHash = KitUtils.hashForFiltering(CommerceEventUtils.getEventType(event) + entry.getKey());
+                for ((key, value) in promotionFields) {
+                    val attributeHash = hashForFiltering(getEventType(event).toString() + key)
                     if (attributeHash == hash) {
-                        if (commerceMatchPropertyValues.contains(entry.getValue().toLowerCase(Locale.US))) {
-                            matchedPromotions.add(promotion);
+                        if (commerceMatchPropertyValues!!.contains(value.lowercase())) {
+                            matchedPromotions.add(promotion)
                         }
                     }
                 }
             }
         }
-        if (matchedPromotions.size() == 0) {
-            return null;
-        } else if (matchedPromotions.size() != promotionList.size()) {
-            return new CommerceEvent.Builder(event).promotions(matchedPromotions).build();
+        return if (matchedPromotions.size == 0) {
+            null
+        } else if (matchedPromotions.size != promotionList.size) {
+            CommerceEvent.Builder(event).promotions(matchedPromotions).build()
         } else {
-            return event;
+            event
         }
     }
 
-    private CommerceEvent matchProductFields(CommerceEvent event) {
-        int hash = Integer.parseInt(commerceMatchPropertyName);
-        int type = CommerceEventUtils.getEventType(event);
-        List<Product> productList = event.getProducts();
-        if (productList == null || productList.size() == 0) {
-            return null;
+    private fun matchProductFields(event: CommerceEvent): CommerceEvent? {
+        val hash = commerceMatchPropertyName!!.toInt()
+        val type = getEventType(event)
+        val productList = event.products
+        if (productList == null || productList.size == 0) {
+            return null
         }
-        List<Product> matchedProducts = new LinkedList<Product>();
-        Map<String, String> productFields = new HashMap<String, String>();
-        for (Product product : productList) {
-            productFields.clear();
-            CommerceEventUtils.extractProductFields(product, productFields);
+        val matchedProducts: MutableList<Product> = LinkedList()
+        val productFields: MutableMap<String, String> = HashMap()
+        for (product in productList) {
+            productFields.clear()
+            extractProductFields(product, productFields)
             if (productFields != null) {
-                for (Map.Entry<String, String> entry : productFields.entrySet()) {
-                    int attributeHash = KitUtils.hashForFiltering(type + entry.getKey());
+                for ((key, value) in productFields) {
+                    val attributeHash = hashForFiltering(type.toString() + key)
                     if (attributeHash == hash) {
-                        if (commerceMatchPropertyValues.contains(entry.getValue().toLowerCase(Locale.US))) {
-                            matchedProducts.add(product);
+                        if (commerceMatchPropertyValues!!.contains(value.lowercase())) {
+                            matchedProducts.add(product)
                         }
                     }
                 }
             }
         }
-        if (matchedProducts.size() == 0) {
-            return null;
-        } else if (matchedProducts.size() != productList.size()) {
-            return new CommerceEvent.Builder(event).products(matchedProducts).build();
+        return if (matchedProducts.size == 0) {
+            null
+        } else if (matchedProducts.size != productList.size) {
+            CommerceEvent.Builder(event).products(matchedProducts).build()
         } else {
-            return event;
+            event
         }
     }
 
-    private CommerceEvent matchProductAttributes(CommerceEvent event) {
-        int hash = Integer.parseInt(commerceMatchPropertyName);
-        List<Product> productList = event.getProducts();
-        if (productList == null || productList.size() == 0) {
-            return null;
+    private fun matchProductAttributes(event: CommerceEvent): CommerceEvent? {
+        val hash = commerceMatchPropertyName!!.toInt()
+        val productList = event.products
+        if (productList == null || productList.size == 0) {
+            return null
         }
-        List<Product> matchedProducts = new LinkedList<Product>();
-        for (Product product : productList) {
-            Map<String, String> attributes = product.getCustomAttributes();
+        val matchedProducts: MutableList<Product> = LinkedList()
+        for (product in productList) {
+            val attributes = product.customAttributes
             if (attributes != null) {
-                for (Map.Entry<String, String> entry : attributes.entrySet()) {
-                    int attributeHash = KitUtils.hashForFiltering(CommerceEventUtils.getEventType(event) + entry.getKey());
+                for ((key, value) in attributes) {
+                    val attributeHash = hashForFiltering(getEventType(event).toString() + key)
                     if (attributeHash == hash) {
-                        if (commerceMatchPropertyValues.contains(entry.getValue().toLowerCase(Locale.US))) {
-                            matchedProducts.add(product);
+                        if (commerceMatchPropertyValues!!.contains(value.lowercase())) {
+                            matchedProducts.add(product)
                         }
                     }
                 }
             }
         }
-        if (matchedProducts.size() == 0) {
-            return null;
-        } else if (matchedProducts.size() != productList.size()) {
-            return new CommerceEvent.Builder(event).products(matchedProducts).build();
+        return if (matchedProducts.size == 0) {
+            null
+        } else if (matchedProducts.size != productList.size) {
+            CommerceEvent.Builder(event).products(matchedProducts).build()
         } else {
-            return event;
+            event
         }
     }
 
-    private boolean matchCommerceAttributes(CommerceEvent event) {
-        Map<String, String> attributes = event.getCustomAttributeStrings();
-        if (attributes == null || attributes.size() < 1) {
-            return false;
+    private fun matchCommerceAttributes(event: CommerceEvent): Boolean {
+        val attributes = event.customAttributeStrings
+        if (attributes == null || attributes.size < 1) {
+            return false
         }
-        int hash = Integer.parseInt(commerceMatchPropertyName);
-        for (Map.Entry<String, String> entry : attributes.entrySet()) {
-            int attributeHash = KitUtils.hashForFiltering(CommerceEventUtils.getEventType(event) + entry.getKey());
+        val hash = commerceMatchPropertyName!!.toInt()
+        for ((key, value) in attributes) {
+            val attributeHash = hashForFiltering(getEventType(event).toString() + key)
             if (attributeHash == hash) {
-                return commerceMatchPropertyValues.contains(entry.getValue().toLowerCase(Locale.US));
+                return commerceMatchPropertyValues!!.contains(value.lowercase())
             }
         }
-        return false;
+        return false
     }
 
-    private boolean matchCommerceFields(CommerceEvent event) {
-        int hash = Integer.parseInt(commerceMatchPropertyName);
-        Map<String, String> fields = new HashMap<String, String>();
-        CommerceEventUtils.extractActionAttributes(event, fields);
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            int fieldHash = KitUtils.hashForFiltering(CommerceEventUtils.getEventType(event) + entry.getKey());
+    private fun matchCommerceFields(event: CommerceEvent): Boolean {
+        val hash = commerceMatchPropertyName!!.toInt()
+        val fields: Map<String, String> = HashMap()
+        extractActionAttributes(event, fields)
+        for ((key, value) in fields) {
+            val fieldHash = hashForFiltering(getEventType(event).toString() + key)
             if (fieldHash == hash) {
-                return commerceMatchPropertyValues.contains(entry.getValue().toLowerCase(Locale.US));
+                return commerceMatchPropertyValues!!.contains(value.lowercase())
             }
-
         }
-        return false;
+        return false
     }
 
-    public Set<String> getAttributeValues() {
-        return mAttributeValues;
+    val attributeValues: Set<String>?
+        get() = mAttributeValues
+
+    companion object {
+        const val MATCH_TYPE_STRING = "S"
+        const val MATCH_TYPE_HASH = "H"
+        const val PROPERTY_LOCATION_EVENT_FIELD = "EventField"
+        const val PROPERTY_LOCATION_EVENT_ATTRIBUTE = "EventAttribute"
+        const val PROPERTY_LOCATION_PRODUCT_FIELD = "ProductField"
+        const val PROPERTY_LOCATION_PRODUCT_ATTRIBUTE = "ProductAttribute"
+        const val PROPERTY_LOCATION_PROMOTION_FIELD = "PromotionField"
     }
 }
